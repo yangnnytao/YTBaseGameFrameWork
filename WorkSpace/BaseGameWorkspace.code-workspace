@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../Assets/2_Scripts"
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/*.meta": true,
+			"**/*.pb": true
+		},
+		"search.exclude": {
+			"**/*.meta": true,
+			"**/*.pb": true
+		},
+		"files.watcherExclude": {
+			"**/*.meta": true,
+			"**/*.pb": true
+		}
+	}
+}
