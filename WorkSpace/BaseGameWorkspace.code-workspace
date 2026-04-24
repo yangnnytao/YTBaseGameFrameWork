@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../Assets/2_Scripts"
+		},
+		{
+			"path": "../Assets/6_ThirdPart/Excel2UnityMaster/Editor"
 		}
 	],
 	"settings": {

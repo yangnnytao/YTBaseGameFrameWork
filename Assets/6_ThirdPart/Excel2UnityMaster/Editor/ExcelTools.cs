@@ -26,7 +26,7 @@ public class ExcelTools : EditorWindow
 	/// <summary>
 	/// 项目根路径	
 	/// </summary>
-	private static string pathRoot = "F:\\004_Projects\\YTBaseGameFrameWork\\YTBaseGameFrameWork";
+	private static string pathRoot = "E:\\003_Project\\DwarfHero\\Project-forTheFans\\ForTheFANS_unity";
 
 	/// <summary>
 	/// 滚动窗口初始位置
@@ -231,8 +231,6 @@ public class ExcelTools : EditorWindow
 				FileUtil.DeleteFileOrDirectory(excelPath);
 			}
 
-			//刷新本地资源
-			AssetDatabase.Refresh();
 		}
 
 		//转换完后关闭插件

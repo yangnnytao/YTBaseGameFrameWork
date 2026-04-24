@@ -1,0 +1,6 @@
+﻿[
+  {"Id":1.0,"Name":"杨涛","Job":"武僧","isHuman":"true"},
+  {"Id":2.0,"Name":"杨东升","Job":"圣骑士","isHuman":"false"},
+  {"Id":3.0,"Name":"陈周航","Job":"恶魔猎手","isHuman":"true"},
+  {"Id":4.0,"Name":"丁汉鹏","Job":"战士","isHuman":"true"}
+]
