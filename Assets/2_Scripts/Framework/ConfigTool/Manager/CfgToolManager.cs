@@ -27,7 +27,7 @@ namespace YGZFrameWork
         /// 配置文件相对路径（基于 Application.dataPath，已包含 Assets 目录）
         /// Editor 下直接读文件，运行时使用 Addressables
         /// </summary>
-        public static string mCfgDataPath = "2_Scripts/Config";
+        public static string mCfgDataPath = "4_GameAssets/CfgData";
 
         #region 生命周期
 
@@ -59,6 +59,7 @@ namespace YGZFrameWork
             foreach (var tempThe in tempCfg.GetAllKeys())
             {
                 var tempData = tempCfg.GetCfgData(tempThe);
+                UnityEngine.Debug.LogError("yt---LoadAll:" + tempData.name);
             }
         }
 
@@ -74,7 +75,10 @@ namespace YGZFrameWork
                 Debug.LogError($"配置文件不存在: {path}");
                 return default;
             }
-            jsonText = System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(path));
+            using (var reader = new StreamReader(path, System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true))
+            {
+                jsonText = reader.ReadToEnd();
+            }
 #else
             // 运行时通过 Addressables 加载 TextAsset，支持热更
             var handle = Addressables.LoadAssetAsync<TextAsset>(fileName);
