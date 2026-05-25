@@ -1,0 +1,8 @@
+/Library
+/.vs
+Assembly-CSharp-Editor.csproj
+Assembly-CSharp.csproj
+.vsconfig
+/Logs
+/obj
+/Temp
