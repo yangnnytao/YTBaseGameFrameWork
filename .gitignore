@@ -1,7 +1,8 @@
 /Library
 /.vs
-*.csproj
+Assembly-CSharp-Editor.csproj
+Assembly-CSharp.csproj
 .vsconfig
 /Logs
-/Temp
 /obj
+/Temp
