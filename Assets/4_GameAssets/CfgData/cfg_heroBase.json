@@ -1,0 +1,5 @@
+﻿[
+  {"id":2,"name":"杨东升","job":"圣骑士","isHuman":false,"baseHp":10.0,"baseAtk":2.0,"baseDef":1.0,"baseSpd":1.0},
+  {"id":3,"name":"陈周航","job":"恶魔猎手","isHuman":true,"baseHp":10.0,"baseAtk":2.0,"baseDef":1.0,"baseSpd":1.0},
+  {"id":4,"name":"丁汉鹏","job":"战士","isHuman":true,"baseHp":10.0,"baseAtk":2.0,"baseDef":1.0,"baseSpd":1.0}
+]

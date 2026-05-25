@@ -1,5 +1,5 @@
 ﻿using System;
 
 public interface IView {
-    void OnMessage(IMessage message);
+   public void OnMessage(IMessage message);
 }

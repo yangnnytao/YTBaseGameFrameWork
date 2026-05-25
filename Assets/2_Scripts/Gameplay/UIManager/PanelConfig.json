@@ -1,0 +1,59 @@
+{
+  "panels": [
+    {
+      "panelId": "MainMenu",
+      "prefabPath": "Prefabs/UI/MainMenuPanel",
+      "canvasLayer": "Main",
+      "isExclusive": true,
+      "isCache": true,
+      "openAnimationTrigger": "Open",
+      "closeAnimationTrigger": "Close",
+      "useFade": true,
+      "fadeDuration": 0.2
+    },
+    {
+      "panelId": "Settings",
+      "prefabPath": "Prefabs/UI/SettingsPanel",
+      "canvasLayer": "Popup",
+      "isExclusive": false,
+      "isCache": true,
+      "openAnimationTrigger": "Open",
+      "closeAnimationTrigger": "Close",
+      "useFade": true,
+      "fadeDuration": 0.15
+    },
+    {
+      "panelId": "Backpack",
+      "prefabPath": "Prefabs/UI/BackpackPanel",
+      "canvasLayer": "Main",
+      "isExclusive": true,
+      "isCache": true,
+      "openAnimationTrigger": "Open",
+      "closeAnimationTrigger": "Close",
+      "useFade": true,
+      "fadeDuration": 0.2
+    },
+    {
+      "panelId": "CharacterInfo",
+      "prefabPath": "Prefabs/UI/CharacterInfoPanel",
+      "canvasLayer": "Popup",
+      "isExclusive": false,
+      "isCache": true,
+      "openAnimationTrigger": "Open",
+      "closeAnimationTrigger": "Close",
+      "useFade": true,
+      "fadeDuration": 0.15
+    },
+    {
+      "panelId": "DiceRoll",
+      "prefabPath": "Prefabs/UI/DiceRollPanel",
+      "canvasLayer": "Top",
+      "isExclusive": false,
+      "isCache": true,
+      "openAnimationTrigger": "Open",
+      "closeAnimationTrigger": "Close",
+      "useFade": true,
+      "fadeDuration": 0.1
+    }
+  ]
+}

@@ -47,4 +47,20 @@ public class NotiConst
     #region RandomEventPanel
     public const string RANDOMEVENTPANEL_SELECTMAP = "RandomEventPanel_selectMap";
     #endregion
+
+    #region Dice
+    public const string DICE_ROLL_STARTED = "DiceRollStarted";
+    public const string DICE_ROLL_COMPLETED = "DiceRollCompleted";
+    public const string DICE_ROLL_ILLEGAL = "DiceRollIllegal";
+    public const string DICE_ROLL = "DICE_ROLL";
+    #endregion
+
+    #region UI
+    public const string UI_OPEN_PANEL = "UIOpenPanel";
+    public const string UI_CLOSE_PANEL = "UIClosePanel";
+    public const string UI_CLOSE_TOP_PANEL = "UICloseTopPanel";
+    public const string UI_CLEAR_ALL_PANELS = "UIClearAllPanels";
+    public const string UI_PANEL_OPENED = "UIPanelOpened";
+    public const string UI_PANEL_CLOSED = "UIPanelClosed";
+    #endregion
 }
