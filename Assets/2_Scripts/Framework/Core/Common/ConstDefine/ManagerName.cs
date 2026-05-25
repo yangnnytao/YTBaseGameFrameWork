@@ -29,5 +29,7 @@ namespace YGZFrameWork
         public const string MessageLogic = "MessageLogic";
         /// <summary> Canvas层级管理器 </summary>
         public const string Canvas = "CanvasManager";
+        /// <summary> UI面板管理器 </summary>
+        public const string UI = "UIManager";
     }
 }
