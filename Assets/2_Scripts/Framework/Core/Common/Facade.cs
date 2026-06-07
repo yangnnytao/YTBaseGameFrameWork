@@ -1,4 +1,4 @@
-﻿/* 
+/* 
     LuaFramework Code By Jarjin lee
 */
 
@@ -130,7 +130,6 @@ namespace YGZFrameWork
         /// <summary> 删除管理器 </summary>
         public void RemoveManager(string typeName)
         {
-
             if (!m_Managers.ContainsKey(typeName))
             {
                 return;
@@ -139,11 +138,10 @@ namespace YGZFrameWork
             object manager = null;
             m_Managers.TryGetValue(typeName, out manager);
 
-            Type type = manager.GetType();
-
-            if (type.IsSubclassOf(typeof(MonoBehaviour)))
+            // 使用 is 运算符替代 GetType().IsSubclassOf()，IL2CPP 安全
+            if (manager is Component component)
             {
-                GameObject.Destroy((Component)manager);
+                GameObject.Destroy(component);
             }
 
             m_Managers.Remove(typeName);

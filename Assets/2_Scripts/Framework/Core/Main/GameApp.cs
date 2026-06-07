@@ -130,7 +130,7 @@ public class GameApp : Singleton<GameApp>
         }
         catch (System.Exception ex)
         {
-            Debug.LogError(string.Format("update() : {0}", ex.ToString()));
+            Debug.LogException(ex);
         }
     }
 

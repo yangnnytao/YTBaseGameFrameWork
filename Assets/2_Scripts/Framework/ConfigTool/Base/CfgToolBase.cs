@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Newtonsoft.Json;
@@ -13,9 +13,22 @@ namespace YGZFrameWork
 
         protected CfgToolManager _tableHanle = null;
 
+        // 静态注册表：所有配置表实例统一登记，供 CfgToolManager 遍历
+        private static readonly List<CfgToolClass> _registry = new List<CfgToolClass>();
+        public static IReadOnlyList<CfgToolClass> AllRegistered => _registry;
+
         public CfgToolClass():base()
         {
             _tableHanle = CfgToolManager.Instance;
+        }
+
+        /// <summary>
+        /// 子类在首次创建实例时调用，自动加入注册表
+        /// </summary>
+        protected static void Register(CfgToolClass tool)
+        {
+            if (tool != null && !_registry.Contains(tool))
+                _registry.Add(tool);
         }
 
         public virtual void Dispose()

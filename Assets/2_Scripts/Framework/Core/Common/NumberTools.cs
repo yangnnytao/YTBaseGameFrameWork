@@ -1,76 +1,62 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 数值格式化工具 —— 将大数转换为带单位的简写形式。
+/// 示例：1234 → "1.2K"，1234567 → "1.2M"
+/// </summary>
 public class NumberTools
 {
+    private static readonly string[] Units = { "", "K", "M", "T", "P", "E", "Z" };
+
+    /// <summary>
+    /// 将数值转换为带单位的简写字符串（保留 1 位小数）。
+    /// </summary>
+    /// <param name="value">原始数值</param>
+    /// <returns>格式化后的字符串，如 "1.2K"、"3.5M"</returns>
     public static string GetNumberConversion(long value)
     {
-        if (value < 10000) return value.ToString();  //如果要算负值，则取绝对值计算
-        
-        long number = value;
-        int index = -1;
-        while (number > 0)
-        {
-            index++;
-            number = number / 1000;
-        }
-        //index = 0 千以内 不换算  =1代表千  划算数值 
-        string endValue = null;
+        if (value < 1000)
+            return value.ToString();
 
-        switch (index)
+        // 计算单位层级：每 1000 一级
+        int unitIndex = 0;
+        double scaled = value;
+        while (scaled >= 1000 && unitIndex < Units.Length - 1)
         {
-            case 0:
-                return value.ToString();
-            default:
-                endValue = Conversion(value, index);
-                endValue += GetConversionEnd(index);
-                break;
-
+            scaled /= 1000;
+            unitIndex++;
         }
 
-        return endValue.ToString();
+        // 保留 1 位小数，去掉末尾的 .0
+        string result = scaled.ToString("0.0") + Units[unitIndex];
+        return result.Replace(".0", "");
     }
 
-    protected static string Conversion(long value, int index)
+    /// <summary>
+    /// 将数值转换为带单位的简写字符串（保留指定小数位数）。
+    /// </summary>
+    /// <param name="value">原始数值</param>
+    /// <param name="decimalPlaces">保留小数位数（默认 1）</param>
+    /// <returns>格式化后的字符串</returns>
+    public static string GetNumberConversion(long value, int decimalPlaces)
     {
-        long endValue = value;
+        if (value < 1000)
+            return value.ToString();
 
-        for (int i = 0; i < index; i++)
+        int unitIndex = 0;
+        double scaled = value;
+        while (scaled >= 1000 && unitIndex < Units.Length - 1)
         {
-            endValue = endValue / 1000;
-
+            scaled /= 1000;
+            unitIndex++;
         }
 
-        string str = endValue.ToString();
-        if (str.Length == 1)
-        {
-
-            str = str + "." + value.ToString()[1];
-        }
-
-        return str;
-    }
-
-    protected static string GetConversionEnd(int index)
-    {
-
-        switch (index)
-        {
-            case 1:
-                return "K";
-            case 2:
-                return "M";
-            case 3:
-                return "T";
-            case 4:
-                return "P";
-            case 5:
-                return "E";
-            case 6:
-                return "Z";
-        }
-
-        return "";
+        string format = "0." + new string('0', decimalPlaces);
+        string result = scaled.ToString(format) + Units[unitIndex];
+        // 去掉末尾的无效零（如 "1.00K" → "1K"）
+        result = result.TrimEnd('0').TrimEnd('.');
+        return result + Units[unitIndex];
     }
 }

@@ -201,5 +201,6 @@ public class URL
 {
     public static string TIMEURL = "http://api.m.taobao.com/rest/api3.do?api=mtop.common.getTimestamp";
 
-    public static string LOAD = "http://47.75.168.103:8882/load.do";
+    /// <summary>服务器加载地址 —— 请在发布前通过配置注入或环境变量覆盖</summary>
+    public static string LOAD = "http://localhost:8080/load.do"; // 默认本地调试地址，生产环境请覆盖
 }

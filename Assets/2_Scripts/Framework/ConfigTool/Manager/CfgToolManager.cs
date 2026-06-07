@@ -2,7 +2,6 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
 #if !UNITY_EDITOR
 using UnityEngine.AddressableAssets;
@@ -20,8 +19,10 @@ namespace YGZFrameWork
     /// <summary>
     /// 配置表管理器 — 标准单例，兼容旧 TableDataManager 接口
     /// </summary>
-    public class CfgToolManager:Singleton<CfgToolManager>
+    public class CfgToolManager : Singleton<CfgToolManager>, IManagerInterface
     {
+        public static CfgToolManager Instance => GetInstance();
+
         public Dictionary<ECfgToolType, CfgToolClass> _cfgToolDic = new Dictionary<ECfgToolType, CfgToolClass>();
         /// <summary>
         /// 配置文件相对路径（基于 Application.dataPath，已包含 Assets 目录）
@@ -29,16 +30,21 @@ namespace YGZFrameWork
         /// </summary>
         public static string mCfgDataPath = "4_GameAssets/CfgData";
 
-        #region 生命周期
+        #region 生命周期（统一为框架标准命名）
 
-        public void Init()
+        public override void InitDataM()
         {
             LoadAll();
         }
 
-        public void Destroy()
+        public override void DestroyM()
         {
             ClearData();
+        }
+
+        public void RegisterMsg()
+        {
+            // 当前无消息需要注册
         }
 
         public void ClearData()
@@ -47,6 +53,7 @@ namespace YGZFrameWork
             {
                 item.Value.Dispose();
             }
+            _cfgToolDic.Clear();
         }
 
         #endregion
@@ -55,13 +62,15 @@ namespace YGZFrameWork
 
         public static void LoadAll()
         {
-            // 编译时自动生成：访问所有 CfgToolBase 子类的单例，触发懒加载和自动注册
-            CfgToolRegistry.TouchAllInstances();
+            // 触发所有配置表单例的懒加载，自动完成自注册
+            _ = HeroBaseCfgTool.Instance;
+            _ = ItemCfgTool.Instance;
+            // 新增配置表 = 在这里加一行 _ = XxxCfgTool.Instance;
 
             // 验证加载结果
-            foreach (var item in Instance._cfgToolDic)
+            foreach (var tool in CfgToolClass.AllRegistered)
             {
-                UnityEngine.Debug.Log("[CfgTool] Loaded: " + item.Key + " = " + item.Value.GetType().Name);
+                UnityEngine.Debug.Log("[CfgTool] Loaded: " + tool.GetType().Name);
             }
         }
 

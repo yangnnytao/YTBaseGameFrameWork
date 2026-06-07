@@ -61,42 +61,15 @@ dotnet build -c Release
 
 ### 3. 集成到 Unity
 
-#### 方式 A：通过 asmdef 引用（推荐，Unity 2021.2+）
-
-1. 在 `Assets/2_Scripts/Framework/ConfigTool/` 目录创建 `ConfigTool.asmdef`
-2. 内容如下：
-
-```json
-{
-    "name": "YGZFrameWork.ConfigTool",
-    "rootNamespace": "YGZFrameWork",
-    "references": [],
-    "includePlatforms": [],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": true,
-    "precompiledReferences": [
-        "YGZFrameWork.CfgTool.SourceGenerator.dll"
-    ],
-    "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
-}
-```
-
-3. 确保 `CfgToolBase.cs`、`CfgToolManager.cs`、`HeroBaseCfgData.cs` 等文件都在 `ConfigTool` 目录下（或子目录），Unity 会自动把它们纳入这个 asmdef
-
-#### 方式 B：通过 csc.rsp 引用（无 asmdef 时）
-
-1. 在 `Assets/` 目录下创建 `csc.rsp`
-2. 添加内容：
+在 `Assets/` 目录下创建 `csc.rsp`，添加内容：
 
 ```
 -analyzer:Assets/2_Scripts/Framework/ConfigTool/Editor/YGZFrameWork.CfgTool.SourceGenerator.dll
 ```
 
-3. 重启 Unity
+重启 Unity 即可生效。
+
+> 注：不需要 asmdef。你的项目目前脚本数量不多，统一在 `Assembly-CSharp` 里即可避免 `Singleton` 等基类的跨程序集引用问题。
 
 ## 新增配置表流程
 
