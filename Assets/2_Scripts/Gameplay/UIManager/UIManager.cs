@@ -44,6 +44,10 @@ namespace YGZFrameWork
             m_PanelCache = new Dictionary<string, BasePanel>();
             m_PanelStack = new List<BasePanel>();
             m_PanelConfigMap = new Dictionary<string, PanelConfigEntry>();
+            
+            // 注入面板配置加载器（ScriptableObject 实现）
+            SetConfigLoader(new PanelConfigLoader());
+            
             RegisterMsg();
         }
 
@@ -98,10 +102,10 @@ namespace YGZFrameWork
         /// <summary>
         /// 打开指定面板
         /// </summary>
-        /// <param name="panelName">面板标识名（与 PanelConfig 中的 panelName 一致）</param>
+        /// <param name="panelId">面板标识名（与 PanelConfig 中的 panelId 一致）</param>
         /// <param name="data">可选传入数据（会传递给 BasePanel.OnOpen）</param>
         /// <param name="onComplete">打开完成回调</param>
-        public void OpenPanel(string panelName, object data = null, Action onComplete = null)
+        public void OpenPanel(string panelId, object data = null, Action onComplete = null)
         {
             if (m_ConfigLoader == null)
             {
@@ -110,18 +114,18 @@ namespace YGZFrameWork
                 return;
             }
 
-            var config = m_ConfigLoader.GetConfig(panelName);
+            var config = m_ConfigLoader.GetConfig(panelId);
             if (config == null)
             {
-                Debug.LogError($"[UIManager] 未找到面板配置：{panelName}，请检查配置加载器");
+                Debug.LogError($"[UIManager] 未找到面板配置：{panelId}，请检查配置加载器");
                 onComplete?.Invoke();
                 return;
             }
 
             // 检查是否已打开
-            if (m_PanelCache.TryGetValue(panelName, out var existingPanel) && existingPanel.IsOpen)
+            if (m_PanelCache.TryGetValue(panelId, out var existingPanel) && existingPanel.IsOpen)
             {
-                Debug.LogWarning($"[UIManager] 面板 {panelName} 已经处于打开状态，跳过重复打开。");
+                Debug.LogWarning($"[UIManager] 面板 {panelId} 已经处于打开状态，跳过重复打开。");
                 onComplete?.Invoke();
                 return;
             }
@@ -129,7 +133,7 @@ namespace YGZFrameWork
             // 独占面板：关闭同层级其他面板
             if (config.isExclusive)
             {
-                ClosePanelsInSameLayer(config.canvasLayer, panelName);
+                ClosePanelsInSameLayer(config.canvasLayer, panelId);
             }
 
             // 暂停下层面板
@@ -142,7 +146,7 @@ namespace YGZFrameWork
             BasePanel panel = GetOrCreatePanel(config);
             if (panel == null)
             {
-                Debug.LogError($"[UIManager] 面板实例化失败：{panelName}");
+                Debug.LogError($"[UIManager] 面板实例化失败：{panelId}");
                 onComplete?.Invoke();
                 return;
             }
@@ -155,30 +159,30 @@ namespace YGZFrameWork
 
             // 执行打开生命周期（适配现有 BasePanel.OnOpen）
             panel.OnOpen(data);
-            Debug.Log($"[UIManager] 面板打开完成：{panelName}");
+            Debug.Log($"[UIManager] 面板打开完成：{panelId}");
             onComplete?.Invoke();
 
             // 广播事件
-            AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_OPENED, panelName);
+            AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_OPENED, panelId);
         }
 
         /// <summary>
         /// 关闭指定面板
         /// </summary>
-        /// <param name="panelName">面板标识名</param>
+        /// <param name="panelId">面板标识名</param>
         /// <param name="onComplete">关闭完成回调</param>
-        public void ClosePanel(string panelName, Action onComplete = null)
+        public void ClosePanel(string panelId, Action onComplete = null)
         {
-            if (!m_PanelCache.TryGetValue(panelName, out var panel))
+            if (!m_PanelCache.TryGetValue(panelId, out var panel))
             {
-                Debug.LogWarning($"[UIManager] 尝试关闭未实例化的面板：{panelName}");
+                Debug.LogWarning($"[UIManager] 尝试关闭未实例化的面板：{panelId}");
                 onComplete?.Invoke();
                 return;
             }
 
             if (!panel.IsOpen)
             {
-                Debug.LogWarning($"[UIManager] 面板 {panelName} 已经是关闭状态。");
+                Debug.LogWarning($"[UIManager] 面板 {panelId} 已经是关闭状态。");
                 onComplete?.Invoke();
                 return;
             }
@@ -199,11 +203,11 @@ namespace YGZFrameWork
                 ResumePanelsBelow(cfg.canvasLayer);
             }
 
-            Debug.Log($"[UIManager] 面板关闭完成：{panelName}");
+            Debug.Log($"[UIManager] 面板关闭完成：{panelId}");
             onComplete?.Invoke();
 
             // 广播事件
-            AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_CLOSED, panelName);
+            AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_CLOSED, panelId);
         }
 
         /// <summary>
@@ -269,15 +273,15 @@ namespace YGZFrameWork
         /// 只显示面板（不移除、不触发打开动画）
         /// 适用于弹窗叠加后恢复下层面板显示
         /// </summary>
-        public void ShowPanel(string panelName)
+        public void ShowPanel(string panelId)
         {
-            if (m_PanelCache.TryGetValue(panelName, out var panel))
+            if (m_PanelCache.TryGetValue(panelId, out var panel))
             {
                 panel.Show();
             }
             else
             {
-                Debug.LogWarning($"[UIManager] ShowPanel 失败，面板未实例化：{panelName}");
+                Debug.LogWarning($"[UIManager] ShowPanel 失败，面板未实例化：{panelId}");
             }
         }
 
@@ -285,15 +289,15 @@ namespace YGZFrameWork
         /// 只隐藏面板（不移除、不触发关闭动画）
         /// 适用于弹窗叠加时隐藏下层面板
         /// </summary>
-        public void HidePanel(string panelName)
+        public void HidePanel(string panelId)
         {
-            if (m_PanelCache.TryGetValue(panelName, out var panel))
+            if (m_PanelCache.TryGetValue(panelId, out var panel))
             {
                 panel.Hide();
             }
             else
             {
-                Debug.LogWarning($"[UIManager] HidePanel 失败，面板未实例化：{panelName}");
+                Debug.LogWarning($"[UIManager] HidePanel 失败，面板未实例化：{panelId}");
             }
         }
 
@@ -301,29 +305,25 @@ namespace YGZFrameWork
 
         #region Query
 
-        /// <summary>
-        /// 获取已打开的面板实例
-        /// </summary>
-        /// <param name="panelName">面板标识名</param>
+        /// <summary> 获取已打开的面板实例 </summary>
+        /// <param name="panelId">面板标识名</param>
         /// <returns>BasePanel 实例，未找到返回 null</returns>
-        public BasePanel GetPanel(string panelName)
+        public BasePanel GetPanel(string panelId)
         {
-            m_PanelCache.TryGetValue(panelName, out var panel);
+            m_PanelCache.TryGetValue(panelId, out var panel);
             return panel;
         }
 
-        /// <summary>
-        /// 获取已打开的面板实例（泛型版本）
-        /// </summary>
-        public T GetPanel<T>(string panelName) where T : BasePanel
+        /// <summary> 获取已打开的面板实例（泛型版本） </summary>
+        public T GetPanel<T>(string panelId) where T : BasePanel
         {
-            return GetPanel(panelName) as T;
+            return GetPanel(panelId) as T;
         }
 
         /// <summary> 检查面板是否已打开 </summary>
-        public bool IsPanelOpen(string panelName)
+        public bool IsPanelOpen(string panelId)
         {
-            return m_PanelCache.TryGetValue(panelName, out var panel) && panel.IsOpen;
+            return m_PanelCache.TryGetValue(panelId, out var panel) && panel.IsOpen;
         }
 
         /// <summary> 获取当前栈顶面板 </summary>
@@ -369,14 +369,14 @@ namespace YGZFrameWork
         /// </summary>
         private BasePanel GetOrCreatePanel(PanelConfigEntry config)
         {
-            string panelName = config.panelName;
+            string panelId = config.panelId;
 
             // 尝试从缓存复用
-            if (config.isCache && m_PanelCache.TryGetValue(panelName, out var cachedPanel))
+            if (config.isCache && m_PanelCache.TryGetValue(panelId, out var cachedPanel))
             {
                 if (cachedPanel != null)
                 {
-                    Debug.Log($"[UIManager] 复用缓存面板：{panelName}");
+                    Debug.Log($"[UIManager] 复用缓存面板：{panelId}");
                     return cachedPanel;
                 }
             }
@@ -391,24 +391,24 @@ namespace YGZFrameWork
 
             // 实例化
             GameObject instance = Object.Instantiate(prefab);
-            instance.name = panelName;
+            instance.name = panelId;
 
             // 获取 BasePanel 组件
             BasePanel panel = instance.GetComponent<BasePanel>();
             if (panel == null)
             {
-                Debug.LogError($"[UIManager] 预制体缺少 BasePanel 组件：{panelName}");
+                Debug.LogError($"[UIManager] 预制体缺少 BasePanel 组件：{panelId}");
                 Object.Destroy(instance);
                 return null;
             }
 
             // 初始化面板标识和配置映射（适配现有 BasePanel）
-            panel.PanelId = config.panelName;
+            panel.PanelId = config.panelId;
             panel.Config = config;
-            m_PanelConfigMap[panelName] = config;
+            m_PanelConfigMap[panelId] = config;
 
             // 存入缓存
-            m_PanelCache[panelName] = panel;
+            m_PanelCache[panelId] = panel;
 
             return panel;
         }

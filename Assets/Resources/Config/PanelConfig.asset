@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2098746e1c5e5804baf614c83f1c28fe, type: 3}
-  m_Name: DiceTestPanelConfig
+  m_Name: PanelConfig
   m_EditorClassIdentifier: 
   panels:
-  - panelId: 
-    prefabPath: DiceTestPanel
+  - panelId: DiceTestPanel
+    prefabPath: Prefabs/UI/DiceTestPanel
     canvasLayer: 1
-    openAnimationTrigger: 
-    closeAnimationTrigger: 
+    openAnimationTrigger: Open
+    closeAnimationTrigger: Close
     isExclusive: 0
     isCache: 1
     pauseBelow: 0
-    handleBackButton: 1
+    handleBackButton: 0

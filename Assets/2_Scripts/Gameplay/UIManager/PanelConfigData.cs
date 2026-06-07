@@ -40,20 +40,14 @@ namespace YGZFrameWork
     [Serializable]
     public class PanelConfigEntry
     {
-        /// <summary>面板唯一标识名（代码中引用）</summary>
-        public string panelName;
+        /// <summary>面板唯一标识名（代码中引用，与预制体名一致）</summary>
+        public string panelId;
 
-        /// <summary>预制体在 Resources 下的路径（不含 Resources/ 前缀）</summary>
+        /// <summary>预制体在 Resources 下的路径（不含 Resources/ 前缀，如 "Prefabs/UI/DiceTestPanel"）</summary>
         public string prefabPath;
 
         /// <summary>所属 Canvas 层级</summary>
         public CanvasLayer canvasLayer;
-
-        /// <summary>打开动画类型</summary>
-        public PanelAnimType openAnimType;
-
-        /// <summary>关闭动画类型</summary>
-        public PanelAnimType closeAnimType;
 
         /// <summary>Animator 打开动画 Trigger 名称（为空则不播放）</summary>
         public string openAnimationTrigger;
