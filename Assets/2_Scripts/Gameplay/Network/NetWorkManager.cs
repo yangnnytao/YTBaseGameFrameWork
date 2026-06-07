@@ -17,24 +17,11 @@ public class NetWorkManager : ManagerMono<NetWorkManager>
 {
     public UnityEvent NetworkChangeEvent = new UnityEvent();
 
-    public static NetWorkManager m_Instance = null;
-
-    public static NetWorkManager Instance
-    {
-        get
-        {
-            if (m_Instance == null)
-            {
-                m_Instance = AppFacade.Instance.GetManager<NetWorkManager>(ManagerName.Network);
-            }
-            return m_Instance;
-        }
-    }
-
     public const int TIMEOUT = 5;//网络请求超时
 
     public override void InitDataM()
     {
+        base.InitDataM();
         Debug.Log("MyNetWorkManager Init");
     }
     public void SendPostMessage(string url, Dictionary<string, string> post, UnityAction<String> unityAction = null, UnityAction errorAction = null, int timeOut = TIMEOUT)
@@ -75,7 +62,15 @@ public class NetWorkManager : ManagerMono<NetWorkManager>
         unityWeb.downloadHandler = new DownloadHandlerBuffer();
         unityWeb.timeout = timeOut;
         yield return unityWeb.SendWebRequest();
-        if (!unityWeb.isHttpError && !unityWeb.isNetworkError)
+        if (unityWeb.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning(string.Format("url:{0}-->jsonData:{1},error:{2},runTime:{3}", url, jsonData, unityWeb.error, Time.unscaledTime - runTime));
+            if (errorAction != null)
+            {
+                errorAction.Invoke();
+            }
+        }
+        else
         {
             if (unityAction != null)
             {
@@ -86,14 +81,6 @@ public class NetWorkManager : ManagerMono<NetWorkManager>
             else
             {
                 Debug.Log(string.Format("url:{0}-->jsonData:{1}", url, jsonData));
-            }
-        }
-        else
-        {
-            Debug.LogWarning(string.Format("url:{0}-->jsonData:{1},error:{2},runTime:{3}", url, jsonData, unityWeb.error, Time.unscaledTime - runTime));
-            if (errorAction != null)
-            {
-                errorAction.Invoke();
             }
         }
     }
@@ -116,7 +103,15 @@ public class NetWorkManager : ManagerMono<NetWorkManager>
         unityWeb.downloadHandler = new DownloadHandlerBuffer();
         unityWeb.timeout = timeOut;
         yield return unityWeb.SendWebRequest();
-        if (!unityWeb.isHttpError && !unityWeb.isNetworkError)
+        if (unityWeb.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning(string.Format("url:{0}-->jsonData:{1},error:{2},runTime:{3}", url, jsonData, unityWeb.error, Time.unscaledTime - runTime));
+            if (errorAction != null)
+            {
+                errorAction.Invoke();
+            }
+        }
+        else
         {
             if (unityAction != null)
             {
@@ -132,14 +127,6 @@ public class NetWorkManager : ManagerMono<NetWorkManager>
             else
             {
                 Debug.Log(string.Format("url:{0}-->jsonData:{1}", url, jsonData));
-            }
-        }
-        else
-        {
-            Debug.LogWarning(string.Format("url:{0}-->jsonData:{1},error:{2},runTime:{3}", url, jsonData, unityWeb.error, Time.unscaledTime - runTime));
-            if (errorAction != null)
-            {
-                errorAction.Invoke();
             }
         }
     }
@@ -184,7 +171,7 @@ public class NetWorkManager : ManagerMono<NetWorkManager>
         }
         request.timeout = timeOut;
         yield return request.SendWebRequest();
-        if (request.isHttpError || request.isNetworkError)
+        if (request.result != UnityWebRequest.Result.Success)
         {
             Debug.LogWarning(string.Format("url:{0}-->post:{1},error:{2},runTime:{3}", url, post.ToString(), request.error, Time.unscaledTime - runTime));
             if (errorAction != null)
@@ -205,7 +192,7 @@ public class NetWorkManager : ManagerMono<NetWorkManager>
 
     public void RegisterMsg()
     {
-        throw new NotImplementedException();
+        // 如需注册消息，请在此实现；当前无消息需要注册
     }
 }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,25 +7,12 @@ namespace YGZFrameWork
     /// <summary>
     /// 游戏管理器
     /// </summary>
-    public class GameManager : ManagerMono<GameManager> 
+    public class GameManager : ManagerMono<GameManager>
     {
-        public static GameManager m_Instance = null;
-
-        public static GameManager Instance
-        {
-            get
-            {
-                if (m_Instance == null)
-                {
-                    m_Instance = AppFacade.Instance.AddManager<GameManager>(ManagerName.Game);
-                }
-                return m_Instance;
-            }
-        }
-
         /// <summary> 初始化游戏管理器 </summary>
-        void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             Init();
         }
 

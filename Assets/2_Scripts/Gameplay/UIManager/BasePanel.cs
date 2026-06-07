@@ -10,7 +10,7 @@ using YGZFrameWork;
 public abstract class BasePanel : Base, IView
 {
     [HideInInspector] public string PanelId;
-    [HideInInspector] public PanelConfigData Config;
+    [HideInInspector] public PanelConfigEntry Config;
 
     // 动画组件缓存
     private Animator _animator;

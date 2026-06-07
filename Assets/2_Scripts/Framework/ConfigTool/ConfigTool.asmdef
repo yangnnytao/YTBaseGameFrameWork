@@ -1,0 +1,16 @@
+{
+    "name": "YGZFrameWork.ConfigTool",
+    "rootNamespace": "YGZFrameWork",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "YGZFrameWork.CfgTool.SourceGenerator.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -38,23 +38,6 @@ public class CanvasLayerConfig
 /// <summary> Canvas 层级管理器 </summary>
 public class CanvasManager : ManagerMono<CanvasManager>
 {
-    public static CanvasManager m_Instance = null;
-
-    public static CanvasManager Instance
-    {
-        get
-        {
-            if (m_Instance == null)
-            {
-                GameObject tempObj = new GameObject(ManagerName.Canvas,typeof(CanvasManager));
-                m_Instance = tempObj.GetComponent<CanvasManager>();
-                DontDestroyOnLoad(tempObj);
-                AppFacade.Instance.AddManager(ManagerName.Canvas, m_Instance);
-            }
-            return m_Instance;
-        }
-    }
-
     [Header("全局适配配置")]
     [SerializeField] private CanvasScalerConfig globalScalerConfig = new CanvasScalerConfig();
 
@@ -81,8 +64,10 @@ public class CanvasManager : ManagerMono<CanvasManager>
 
     private Transform _mainParent = null;
 
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake();
+        AppFacade.Instance.AddManager(ManagerName.Canvas, this);
     }
 
     public override void InitDataM()

@@ -1,16 +1,14 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+
 namespace YGZFrameWork
 {
     public class AppFacade : Facade
     {
-        private static AppFacade _instance;
-
-        public AppFacade() : base()
-        {
-        }
+        private static readonly object _lock = new object();
+        private static volatile AppFacade _instance;
 
         public static AppFacade Instance
         {
@@ -18,10 +16,20 @@ namespace YGZFrameWork
             {
                 if (_instance == null)
                 {
-                    _instance = new AppFacade();
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new AppFacade();
+                        }
+                    }
                 }
                 return _instance;
             }
+        }
+
+        public AppFacade() : base()
+        {
         }
 
         override protected void InitFramework()

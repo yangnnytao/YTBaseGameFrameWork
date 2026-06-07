@@ -78,7 +78,7 @@ public class EventDispatcher
                         info += "toString--->" + ex.ToString() + "\n";
 
                         Debug.LogError(info);
-                        throw ex;
+                        // 事件处理器异常不应中断其他处理器，记录后继续
                     }
                     if (!eventPool.ContainsKey(id))
                     {

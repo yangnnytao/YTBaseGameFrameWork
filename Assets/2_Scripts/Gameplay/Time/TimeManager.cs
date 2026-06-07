@@ -9,20 +9,6 @@ using YGZFrameWork;
 /// </summary>
 public class TimeManager : ManagerMono<TimeManager>
 {
-    public static TimeManager m_Instance = null;
-
-    public static TimeManager Instance
-    {
-        get
-        {
-            if (m_Instance == null)
-            {
-                m_Instance = AppFacade.Instance.GetManager<TimeManager>(ManagerName.Timer);
-            }
-            return m_Instance;
-        }
-    }
-
     public static DateTime DateTime1970 = new DateTime(1970, 1, 1).ToLocalTime();
 
     public string address;
@@ -287,13 +273,11 @@ public class TimeManager : ManagerMono<TimeManager>
 
     public void RegisterMsg()
     {
-        throw new NotImplementedException();
+        // 当前无消息需要注册
     }
 
     public void ClearData()
     {
-        throw new NotImplementedException();
+        // 当前无数据需要清空
     }
 }
-
-

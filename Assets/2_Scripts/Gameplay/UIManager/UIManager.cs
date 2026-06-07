@@ -1,293 +1,549 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
-using YGZFrameWork;
+using Object = UnityEngine.Object;
 
-/// <summary>
-/// UI 面板管理器
-/// 负责面板栈管理、Open/Close/Show/Hide/ClearAll、配置表驱动。
-/// 配合 CanvasManager 的层级系统挂载面板到对应 Canvas 层。
-/// </summary>
-public class UIManager : ManagerBase<UIManager>, IManagerInterface
+namespace YGZFrameWork
 {
-
-    // 面板栈（从底到顶）
-    private readonly List<BasePanel> _panelStack = new List<BasePanel>();
-
-    // 缓存的面板（key = panelId）
-    private readonly Dictionary<string, BasePanel> _cachedPanels = new Dictionary<string, BasePanel>();
-
-    // 配置表映射
-    private Dictionary<string, PanelConfigData> _configMap;
-
-    public override void InitDataM()
+    /// <summary>
+    /// UI 面板管理器
+    /// 负责面板的打开、关闭、栈导航、生命周期管理和预制体加载。
+    /// 非 Mono Manager，继承 ManagerBase<T>，通过 ManagerOfManager 初始化。
+    /// </summary>
+    public class UIManager : ManagerBase<UIManager>, IManagerInterface
     {
-        base.InitDataM();
-        RegisterMsg();
-        LoadConfig();
-    }
+        public static UIManager Instance => GetInstance();
 
-    public override void DestroyM()
-    {
-        ClearData();
-        base.DestroyM();
-    }
+        #region Fields
 
-    public void RegisterMsg()
-    {
-        AddEventListener((int)UIMessage.OpenPanel, OnMsgOpenPanel);
-        AddEventListener((int)UIMessage.ClosePanel, OnMsgClosePanel);
-        AddEventListener((int)UIMessage.CloseTopPanel, OnMsgCloseTopPanel);
-        AddEventListener((int)UIMessage.ClearAllPanels, OnMsgClearAllPanels);
-    }
+        /// <summary>已实例化的面板缓存：name → BasePanel（含已打开和已关闭的缓存面板）</summary>
+        private Dictionary<string, BasePanel> m_PanelCache;
 
-    public void ClearData()
-    {
-        ClearAllEvents();
-        ClearAllPanels();
-        _configMap?.Clear();
-        _cachedPanels.Clear();
-        _panelStack.Clear();
-    }
+        /// <summary>面板栈（后进先出，记录打开顺序）</summary>
+        private List<BasePanel> m_PanelStack;
 
-    #region 配置加载
+        /// <summary>面板配置加载器（通过接口注入，与具体实现解耦）</summary>
+        private IPanelConfigLoader m_ConfigLoader;
 
-    private void LoadConfig()
-    {
-        _configMap = new Dictionary<string, PanelConfigData>();
-        // TODO: 从 JSON/ScriptableObject 加载配置
-        // 示例：var configs = Resources.LoadAll<PanelConfigData>("Config/PanelConfig");
-        var configs = Resources.Load<PanelConfigData>("Config/DiceTestPanelConfig");
-        _configMap[configs.panelId] = Resources.Load<PanelConfigData>("Config/DiceTestPanelConfig");
-    }
+        /// <summary>CanvasManager 引用（通过 Facade 消息或运行时查找获取）</summary>
+        private CanvasManager m_CanvasManager;
 
-    public void SetConfigMap(Dictionary<string, PanelConfigData> map)
-    {
-        _configMap = map ?? new Dictionary<string, PanelConfigData>();
-    }
+        /// <summary>当前是否有独占面板处于打开状态</summary>
+        private bool m_HasExclusivePanelOpen;
 
-    #endregion
+        /// <summary>面板名 → 配置映射（适配现有 BasePanel，不依赖 panel.Config）</summary>
+        private Dictionary<string, PanelConfigEntry> m_PanelConfigMap;
 
-    #region 公开 API
+        #endregion
 
-    /// <summary>打开指定面板</summary>
-    public BasePanel OpenPanel(string panelId, object param = null)
-    {
-        if (!_configMap.TryGetValue(panelId, out var cfg))
+        #region Initialization
+
+        public override void InitDataM()
         {
-            Debug.LogError($"[UIManager] 找不到面板配置: {panelId}");
-            return null;
+            base.InitDataM();
+            m_PanelCache = new Dictionary<string, BasePanel>();
+            m_PanelStack = new List<BasePanel>();
+            m_PanelConfigMap = new Dictionary<string, PanelConfigEntry>();
+            RegisterMsg();
         }
 
-        // 如果面板已打开且是独占的，忽略
-        var existing = FindInStack(panelId);
-        if (existing != null)
+        public override void DestroyM()
         {
-            if (cfg.isExclusive)
+            ClearAllPanels();
+            base.DestroyM();
+        }
+
+        public void RegisterMsg()
+        {
+            // 监听框架消息（如场景切换时清空面板）
+            // AppFacade.Instance.RegisterObserver(NotiConst.SCENE_CHANGED, OnSceneChanged);
+        }
+
+        public void ClearData()
+        {
+            ClearAllPanels();
+        }
+
+        #endregion
+
+        #region Config Loader Injection
+
+        /// <summary>
+        /// 注入面板配置加载器
+        /// 主分支只提供接口，子分支/开发者实现具体加载逻辑后注入
+        /// </summary>
+        public void SetConfigLoader(IPanelConfigLoader loader)
+        {
+            m_ConfigLoader = loader;
+            m_ConfigLoader?.LoadConfigs();
+        }
+
+        /// <summary> 重新加载配置（热重载，开发调试用）</summary>
+        public void ReloadConfig()
+        {
+            m_ConfigLoader?.Reload();
+        }
+
+        /// <summary> 按面板名获取配置（内部辅助）</summary>
+        private PanelConfigEntry GetPanelConfig(string panelName)
+        {
+            m_PanelConfigMap.TryGetValue(panelName, out var config);
+            return config;
+        }
+
+        #endregion
+
+        #region Core API —— Open / Close
+
+        /// <summary>
+        /// 打开指定面板
+        /// </summary>
+        /// <param name="panelName">面板标识名（与 PanelConfig 中的 panelName 一致）</param>
+        /// <param name="data">可选传入数据（会传递给 BasePanel.OnOpen）</param>
+        /// <param name="onComplete">打开完成回调</param>
+        public void OpenPanel(string panelName, object data = null, Action onComplete = null)
+        {
+            if (m_ConfigLoader == null)
             {
-                Debug.LogWarning($"[UIManager] 独占面板 {panelId} 已存在");
-                return existing;
+                Debug.LogError("[UIManager] ConfigLoader 未注入，无法打开面板");
+                onComplete?.Invoke();
+                return;
             }
-            existing.Show();
-            return existing;
-        }
 
-        // 独占面板：关闭同层级其他面板
-        if (cfg.isExclusive)
-        {
-            ClosePanelsInLayer(cfg.canvasLayer);
-        }
-
-        // 实例化面板
-        BasePanel panel;
-        if (cfg.isCache && _cachedPanels.TryGetValue(panelId, out panel))
-        {
-            panel.gameObject.SetActive(true);
-        }
-        else
-        {
-            panel = InstantiatePanel(cfg);
-            if (cfg.isCache)
+            var config = m_ConfigLoader.GetConfig(panelName);
+            if (config == null)
             {
-                _cachedPanels[panelId] = panel;
+                Debug.LogError($"[UIManager] 未找到面板配置：{panelName}，请检查配置加载器");
+                onComplete?.Invoke();
+                return;
             }
+
+            // 检查是否已打开
+            if (m_PanelCache.TryGetValue(panelName, out var existingPanel) && existingPanel.IsOpen)
+            {
+                Debug.LogWarning($"[UIManager] 面板 {panelName} 已经处于打开状态，跳过重复打开。");
+                onComplete?.Invoke();
+                return;
+            }
+
+            // 独占面板：关闭同层级其他面板
+            if (config.isExclusive)
+            {
+                ClosePanelsInSameLayer(config.canvasLayer, panelName);
+            }
+
+            // 暂停下层面板
+            if (config.pauseBelow)
+            {
+                PausePanelsBelow(config.canvasLayer);
+            }
+
+            // 获取或创建面板实例
+            BasePanel panel = GetOrCreatePanel(config);
+            if (panel == null)
+            {
+                Debug.LogError($"[UIManager] 面板实例化失败：{panelName}");
+                onComplete?.Invoke();
+                return;
+            }
+
+            // 挂载到对应 Canvas 层
+            AttachToCanvasLayer(panel, config.canvasLayer);
+
+            // 推入栈
+            PushToStack(panel);
+
+            // 执行打开生命周期（适配现有 BasePanel.OnOpen）
+            panel.OnOpen(data);
+            Debug.Log($"[UIManager] 面板打开完成：{panelName}");
+            onComplete?.Invoke();
+
+            // 广播事件
+            AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_OPENED, panelName);
         }
 
-        if (panel == null) return null;
-
-        // 压入栈
-        _panelStack.Add(panel);
-        panel.OnOpen(param);
-
-        // 广播
-        DispatchEvent((int)UIMessage.PanelOpened, panelId);
-        AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_OPENED, panelId);
-
-        return panel;
-    }
-
-    /// <summary>关闭指定面板</summary>
-    public void ClosePanel(string panelId)
-    {
-        var panel = FindInStack(panelId);
-        if (panel == null) return;
-
-        RemoveFromStack(panel);
-        panel.OnClose();
-
-        if (!_cachedPanels.ContainsKey(panelId))
+        /// <summary>
+        /// 关闭指定面板
+        /// </summary>
+        /// <param name="panelName">面板标识名</param>
+        /// <param name="onComplete">关闭完成回调</param>
+        public void ClosePanel(string panelName, Action onComplete = null)
         {
-            GameObject.Destroy(panel.gameObject);
-        }
-        else
-        {
-            panel.gameObject.SetActive(false);
-        }
+            if (!m_PanelCache.TryGetValue(panelName, out var panel))
+            {
+                Debug.LogWarning($"[UIManager] 尝试关闭未实例化的面板：{panelName}");
+                onComplete?.Invoke();
+                return;
+            }
 
-        DispatchEvent((int)UIMessage.PanelClosed, panelId);
-        AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_CLOSED, panelId);
-    }
+            if (!panel.IsOpen)
+            {
+                Debug.LogWarning($"[UIManager] 面板 {panelName} 已经是关闭状态。");
+                onComplete?.Invoke();
+                return;
+            }
 
-    /// <summary>关闭栈顶面板（返回键用）</summary>
-    public void CloseTopPanel()
-    {
-        if (_panelStack.Count == 0) return;
-        var top = _panelStack[_panelStack.Count - 1];
-        ClosePanel(top.PanelId);
-    }
-
-    /// <summary>关闭所有面板</summary>
-    public void ClearAllPanels()
-    {
-        for (int i = _panelStack.Count - 1; i >= 0; i--)
-        {
-            var panel = _panelStack[i];
+            // 执行关闭生命周期（适配现有 BasePanel.OnClose）
             panel.OnClose();
-            if (!_cachedPanels.ContainsKey(panel.PanelId))
+
+            // 从栈中移除
+            RemoveFromStack(panel);
+
+            // 处理缓存/销毁
+            HandlePanelAfterClose(panel);
+
+            // 恢复下层面板
+            var cfg = GetPanelConfig(panel.PanelId);
+            if (cfg != null && cfg.pauseBelow)
             {
-                UnityEngine.GameObject.Destroy(panel.gameObject);
+                ResumePanelsBelow(cfg.canvasLayer);
+            }
+
+            Debug.Log($"[UIManager] 面板关闭完成：{panelName}");
+            onComplete?.Invoke();
+
+            // 广播事件
+            AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_CLOSED, panelName);
+        }
+
+        /// <summary>
+        /// 关闭栈顶面板（用于返回按钮）
+        /// </summary>
+        public void CloseTopPanel(Action onComplete = null)
+        {
+            if (m_PanelStack.Count == 0)
+            {
+                Debug.Log("[UIManager] 面板栈为空，无法 CloseTopPanel。");
+                onComplete?.Invoke();
+                return;
+            }
+
+            var topPanel = m_PanelStack[m_PanelStack.Count - 1];
+            var topConfig = GetPanelConfig(topPanel.PanelId);
+            if (topConfig != null && !topConfig.handleBackButton)
+            {
+                // 栈顶面板不处理返回键，继续向下找
+                for (int i = m_PanelStack.Count - 2; i >= 0; i--)
+                {
+                    var cfg = GetPanelConfig(m_PanelStack[i].PanelId);
+                    if (cfg != null && cfg.handleBackButton)
+                    {
+                        topPanel = m_PanelStack[i];
+                        break;
+                    }
+                }
+            }
+
+            ClosePanel(topPanel.PanelId, onComplete);
+        }
+
+        /// <summary>
+        /// 清空所有面板（场景切换时调用）
+        /// </summary>
+        public void ClearAllPanels()
+        {
+            // 逆序关闭所有面板
+            for (int i = m_PanelStack.Count - 1; i >= 0; i--)
+            {
+                var panel = m_PanelStack[i];
+                if (panel.IsOpen)
+                {
+                    // 强制关闭（跳过动画）
+                    panel.OnClose();
+                    HandlePanelDestroy(panel);
+                }
+            }
+
+            m_PanelStack.Clear();
+            m_PanelCache.Clear();
+            m_PanelConfigMap.Clear();
+
+            Debug.Log("[UIManager] 所有面板已清空。");
+        }
+
+        #endregion
+
+        #region Show / Hide (显隐不移除)
+
+        /// <summary>
+        /// 只显示面板（不移除、不触发打开动画）
+        /// 适用于弹窗叠加后恢复下层面板显示
+        /// </summary>
+        public void ShowPanel(string panelName)
+        {
+            if (m_PanelCache.TryGetValue(panelName, out var panel))
+            {
+                panel.Show();
             }
             else
             {
-                panel.gameObject.SetActive(false);
+                Debug.LogWarning($"[UIManager] ShowPanel 失败，面板未实例化：{panelName}");
             }
         }
-        _panelStack.Clear();
-    }
 
-    /// <summary>获取当前栈顶面板</summary>
-    public BasePanel GetTopPanel()
-    {
-        if (_panelStack.Count == 0) return null;
-        return _panelStack[_panelStack.Count - 1];
-    }
-
-    /// <summary>面板是否已打开</summary>
-    public bool IsPanelOpen(string panelId)
-    {
-        return FindInStack(panelId) != null;
-    }
-
-    #endregion
-
-    #region 内部方法
-
-    private BasePanel InstantiatePanel(PanelConfigData cfg)
-    {
-        if (cfg.panelPrefab == null)
+        /// <summary>
+        /// 只隐藏面板（不移除、不触发关闭动画）
+        /// 适用于弹窗叠加时隐藏下层面板
+        /// </summary>
+        public void HidePanel(string panelName)
         {
-            Debug.LogError($"[UIManager] 面板预制体为空: {cfg.panelId}");
-            return null;
-        }
-
-        var canvasMgr = AppFacade.Instance.GetManager<CanvasManager>(ManagerName.Canvas);
-        if (canvasMgr == null)
-        {
-            Debug.LogError("[UIManager] CanvasManager 未初始化");
-            return null;
-        }
-
-        var parent = canvasMgr.GetLayer(cfg.canvasLayer);
-        if (parent == null)
-        {
-            Debug.LogError($"[UIManager] Canvas 层级不存在: {cfg.canvasLayer}");
-            return null;
-        }
-
-        var go = GameObject.Instantiate(cfg.panelPrefab, parent);
-        var panel = go.GetComponent<BasePanel>();
-        if (panel == null)
-        {
-            panel = go.AddComponent<BasePanel>();
-        }
-        panel.PanelId = cfg.panelId;
-        panel.Config = cfg;
-
-        return panel;
-    }
-
-    private BasePanel FindInStack(string panelId)
-    {
-        for (int i = 0; i < _panelStack.Count; i++)
-        {
-            if (_panelStack[i].PanelId == panelId)
-                return _panelStack[i];
-        }
-        return null;
-    }
-
-    private void RemoveFromStack(BasePanel panel)
-    {
-        _panelStack.Remove(panel);
-    }
-
-    private void ClosePanelsInLayer(string layerName)
-    {
-        for (int i = _panelStack.Count - 1; i >= 0; i--)
-        {
-            if (_panelStack[i].Config.canvasLayer == layerName)
+            if (m_PanelCache.TryGetValue(panelName, out var panel))
             {
-                var panel = _panelStack[i];
-                _panelStack.RemoveAt(i);
-                panel.OnClose();
-                if (!_cachedPanels.ContainsKey(panel.PanelId))
+                panel.Hide();
+            }
+            else
+            {
+                Debug.LogWarning($"[UIManager] HidePanel 失败，面板未实例化：{panelName}");
+            }
+        }
+
+        #endregion
+
+        #region Query
+
+        /// <summary>
+        /// 获取已打开的面板实例
+        /// </summary>
+        /// <param name="panelName">面板标识名</param>
+        /// <returns>BasePanel 实例，未找到返回 null</returns>
+        public BasePanel GetPanel(string panelName)
+        {
+            m_PanelCache.TryGetValue(panelName, out var panel);
+            return panel;
+        }
+
+        /// <summary>
+        /// 获取已打开的面板实例（泛型版本）
+        /// </summary>
+        public T GetPanel<T>(string panelName) where T : BasePanel
+        {
+            return GetPanel(panelName) as T;
+        }
+
+        /// <summary> 检查面板是否已打开 </summary>
+        public bool IsPanelOpen(string panelName)
+        {
+            return m_PanelCache.TryGetValue(panelName, out var panel) && panel.IsOpen;
+        }
+
+        /// <summary> 获取当前栈顶面板 </summary>
+        public BasePanel GetTopPanel()
+        {
+            if (m_PanelStack.Count == 0) return null;
+            return m_PanelStack[m_PanelStack.Count - 1];
+        }
+
+        /// <summary> 获取当前打开的面板数量 </summary>
+        public int OpenPanelCount => m_PanelStack.Count;
+
+        #endregion
+
+        #region Back Button (Android 物理返回键)
+
+        /// <summary>
+        /// 处理返回按钮（供 GameManager 或 InputManager 调用）
+        /// </summary>
+        /// <returns>true = 已处理，false = 无面板可关闭</returns>
+        public bool HandleBackButton()
+        {
+            // 从栈顶开始找第一个响应返回键的面板
+            for (int i = m_PanelStack.Count - 1; i >= 0; i--)
+            {
+                var panel = m_PanelStack[i];
+                var cfg = GetPanelConfig(panel.PanelId);
+                if (cfg != null && cfg.handleBackButton && panel.IsOpen)
                 {
-                    GameObject.Destroy(panel.gameObject);
+                    panel.OnBackButton();
+                    return true;
                 }
-                else
+            }
+            return false;
+        }
+
+        #endregion
+
+        #region Private Helpers
+
+        /// <summary>
+        /// 获取或创建面板实例
+        /// </summary>
+        private BasePanel GetOrCreatePanel(PanelConfigEntry config)
+        {
+            string panelName = config.panelName;
+
+            // 尝试从缓存复用
+            if (config.isCache && m_PanelCache.TryGetValue(panelName, out var cachedPanel))
+            {
+                if (cachedPanel != null)
                 {
-                    panel.gameObject.SetActive(false);
+                    Debug.Log($"[UIManager] 复用缓存面板：{panelName}");
+                    return cachedPanel;
+                }
+            }
+
+            // 加载预制体
+            GameObject prefab = Resources.Load<GameObject>(config.prefabPath);
+            if (prefab == null)
+            {
+                Debug.LogError($"[UIManager] 预制体加载失败：Resources/{config.prefabPath}.prefab");
+                return null;
+            }
+
+            // 实例化
+            GameObject instance = Object.Instantiate(prefab);
+            instance.name = panelName;
+
+            // 获取 BasePanel 组件
+            BasePanel panel = instance.GetComponent<BasePanel>();
+            if (panel == null)
+            {
+                Debug.LogError($"[UIManager] 预制体缺少 BasePanel 组件：{panelName}");
+                Object.Destroy(instance);
+                return null;
+            }
+
+            // 初始化面板标识和配置映射（适配现有 BasePanel）
+            panel.PanelId = config.panelName;
+            panel.Config = config;
+            m_PanelConfigMap[panelName] = config;
+
+            // 存入缓存
+            m_PanelCache[panelName] = panel;
+
+            return panel;
+        }
+
+        /// <summary>
+        /// 将面板挂载到对应 Canvas 层
+        /// </summary>
+        private void AttachToCanvasLayer(BasePanel panel, CanvasLayer layer)
+        {
+            if (m_CanvasManager == null)
+            {
+                m_CanvasManager = CanvasManager.Instance;
+                if (m_CanvasManager == null)
+                {
+                    Debug.LogError("[UIManager] CanvasManager 未找到！请确保 CanvasManager 已初始化。");
+                    return;
+                }
+            }
+
+            // 通过 CanvasManager 获取对应层级的 Transform 并挂载（适配 GetLayer(string)）
+            Transform layerRoot = m_CanvasManager.GetLayer(layer.ToString());
+            if (layerRoot != null)
+            {
+                panel.transform.SetParent(layerRoot, false);
+                ((RectTransform)panel.transform).anchoredPosition = Vector2.zero;
+                ((RectTransform)panel.transform).localScale = Vector3.one;
+            }
+            else
+            {
+                Debug.LogWarning($"[UIManager] Canvas 层级 {layer} 未找到，面板将挂载到当前激活的根节点下。");
+            }
+        }
+
+        /// <summary> 推入面板栈 </summary>
+        private void PushToStack(BasePanel panel)
+        {
+            if (!m_PanelStack.Contains(panel))
+            {
+                m_PanelStack.Add(panel);
+            }
+        }
+
+        /// <summary> 从面板栈移除 </summary>
+        private void RemoveFromStack(BasePanel panel)
+        {
+            m_PanelStack.Remove(panel);
+        }
+
+        /// <summary>
+        /// 面板关闭后的处理：缓存 or 销毁
+        /// </summary>
+        private void HandlePanelAfterClose(BasePanel panel)
+        {
+            var cfg = GetPanelConfig(panel.PanelId);
+            if (cfg != null && cfg.isCache)
+            {
+                // 缓存模式：隐藏但不销毁
+                panel.gameObject.SetActive(false);
+                Debug.Log($"[UIManager] 面板 {panel.PanelId} 已缓存（隐藏未销毁）。");
+            }
+            else
+            {
+                // 非缓存模式：销毁
+                HandlePanelDestroy(panel);
+            }
+        }
+
+        /// <summary> 销毁面板实例 </summary>
+        private void HandlePanelDestroy(BasePanel panel)
+        {
+            if (panel == null) return;
+
+            string name = panel.PanelId;
+            m_PanelCache.Remove(name);
+            m_PanelStack.Remove(panel);
+            m_PanelConfigMap.Remove(name);
+
+            if (panel.gameObject != null)
+            {
+                Object.Destroy(panel.gameObject);
+            }
+
+            Debug.Log($"[UIManager] 面板已销毁：{name}");
+        }
+
+        /// <summary>
+        /// 关闭同层级的其他面板（用于独占面板）
+        /// </summary>
+        private void ClosePanelsInSameLayer(CanvasLayer layer, string exceptPanelName)
+        {
+            for (int i = m_PanelStack.Count - 1; i >= 0; i--)
+            {
+                var panel = m_PanelStack[i];
+                var cfg = GetPanelConfig(panel.PanelId);
+                if (panel.PanelId != exceptPanelName && cfg != null && cfg.canvasLayer == layer)
+                {
+                    ClosePanel(panel.PanelId);
                 }
             }
         }
+
+        /// <summary>
+        /// 暂停指定层级以下的所有面板
+        /// </summary>
+        private void PausePanelsBelow(CanvasLayer layer)
+        {
+            int targetLayer = (int)layer;
+            foreach (var panel in m_PanelStack)
+            {
+                var cfg = GetPanelConfig(panel.PanelId);
+                if (cfg != null && (int)cfg.canvasLayer < targetLayer && panel.IsOpen)
+                {
+                    panel.OnPause();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 恢复指定层级以下的所有面板
+        /// </summary>
+        private void ResumePanelsBelow(CanvasLayer layer)
+        {
+            int targetLayer = (int)layer;
+            for (int i = m_PanelStack.Count - 1; i >= 0; i--)
+            {
+                var panel = m_PanelStack[i];
+                var cfg = GetPanelConfig(panel.PanelId);
+                if (cfg != null && (int)cfg.canvasLayer < targetLayer && panel.IsOpen)
+                {
+                    panel.OnResume();
+                    break; // 只恢复最上面一个被暂停的
+                }
+            }
+        }
+
+        #endregion
     }
-
-    #endregion
-
-    #region 消息回调
-
-    private void OnMsgOpenPanel(params object[] objs)
-    {
-        if (objs.Length < 1) return;
-        string panelId = objs[0].ToString();
-        object param = objs.Length > 1 ? objs[1] : null;
-        OpenPanel(panelId, param);
-    }
-
-    private void OnMsgClosePanel(params object[] objs)
-    {
-        if (objs.Length < 1) return;
-        ClosePanel(objs[0].ToString());
-    }
-
-    private void OnMsgCloseTopPanel(params object[] objs)
-    {
-        CloseTopPanel();
-    }
-
-    private void OnMsgClearAllPanels(params object[] objs)
-    {
-        ClearAllPanels();
-    }
-
-    #endregion
 }

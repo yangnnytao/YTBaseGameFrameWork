@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2098746e1c5e5804baf614c83f1c28fe, type: 3}
+  m_Name: DiceTestPanelConfig
+  m_EditorClassIdentifier: 
+  panelId: DiceTestPanel
+  panelPrefab: {fileID: 5701463413797489081, guid: c992f83605096d6468552d06e1765703, type: 3}
+  canvasLayer: Main
+  isExclusive: 0
+  isCache: 1
+  openAnimationTrigger: Open
+  closeAnimationTrigger: Close
+  useFade: 1
+  fadeDuration: 0.2

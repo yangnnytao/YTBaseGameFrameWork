@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using YGZFrameWork;
@@ -7,7 +7,7 @@ using YGZFrameWork;
 /// ljs:创建
 /// YT:修改2020-7-24
 /// </summary>
-public class GameApp
+public class GameApp : Singleton<GameApp>
 {
     /// <summary> 主要的Mono </summary>
     public MonoBehaviour mainMonoBehaviour
@@ -40,17 +40,6 @@ public class GameApp
 
 
     public GameApp() { }
-
-    /// <summary> 单例 </summary>
-    public static GameApp Instance
-    {
-        get
-        {
-            if (null == _Instance) _Instance = new GameApp();
-            return _Instance;
-        }
-    }
-    private static GameApp _Instance = null;
 
     private float m_realTime = 0f;//游戏运行时间
 

@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using OfficeOpenXml.FormulaParsing.LexicalAnalysis;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,6 +14,7 @@ namespace YGZFrameWork
     {
         Start,
         cfg_HeroBase,
+        cfg_Item,   // 示例：新增 Item 配置表
         End,
     }
     /// <summary>
@@ -55,11 +55,13 @@ namespace YGZFrameWork
 
         public static void LoadAll()
         {
-            var tempCfg = HeroBaseCfgTool.mInstance;
-            foreach (var tempThe in tempCfg.GetAllKeys())
+            // 编译时自动生成：访问所有 CfgToolBase 子类的单例，触发懒加载和自动注册
+            CfgToolRegistry.TouchAllInstances();
+
+            // 验证加载结果
+            foreach (var item in Instance._cfgToolDic)
             {
-                var tempData = tempCfg.GetCfgData(tempThe);
-                UnityEngine.Debug.LogError("yt---LoadAll:" + tempData.name);
+                UnityEngine.Debug.Log("[CfgTool] Loaded: " + item.Key + " = " + item.Value.GetType().Name);
             }
         }
 
@@ -86,7 +88,7 @@ namespace YGZFrameWork
             if (textAsset == null)
             {
                 Debug.LogError($"Addressables 加载失败: {fileName}，请检查 Addressables Group 中是否包含该配置");
-                return new Dictionary<int, NewCfgData<T>>();
+                return default;
             }
             jsonText = textAsset.text;
             Addressables.Release(handle);

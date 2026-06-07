@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YGZFrameWork.ConfigTool", "YGZFrameWork.ConfigTool.csproj", "{B0DC1DC5-8645-6ECA-328A-9DCAF38D3443}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assembly-CSharp", "Assembly-CSharp.csproj", "{4A9048B8-5879-230A-D974-9B4A556F626F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assembly-CSharp-Editor", "Assembly-CSharp-Editor.csproj", "{9C8A8C28-2850-E849-CB7E-5868EC414862}"
@@ -11,6 +13,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B0DC1DC5-8645-6ECA-328A-9DCAF38D3443}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0DC1DC5-8645-6ECA-328A-9DCAF38D3443}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0DC1DC5-8645-6ECA-328A-9DCAF38D3443}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0DC1DC5-8645-6ECA-328A-9DCAF38D3443}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4A9048B8-5879-230A-D974-9B4A556F626F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4A9048B8-5879-230A-D974-9B4A556F626F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A9048B8-5879-230A-D974-9B4A556F626F}.Release|Any CPU.ActiveCfg = Release|Any CPU
