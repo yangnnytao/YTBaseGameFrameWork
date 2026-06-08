@@ -13,7 +13,7 @@ using YGZFrameWork;
 /// <summary>
 /// 网络管理器
 /// </summary>
-public class NetWorkManager : ManagerMono<NetWorkManager>
+public class NetWorkManager : ManagerMono<NetWorkManager>, IManagerInterface
 {
     public UnityEvent NetworkChangeEvent = new UnityEvent();
 
@@ -193,6 +193,11 @@ public class NetWorkManager : ManagerMono<NetWorkManager>
     public void RegisterMsg()
     {
         // 如需注册消息，请在此实现；当前无消息需要注册
+    }
+
+    public void ClearData()
+    {
+        // 当前无数据需要清空
     }
 }
 

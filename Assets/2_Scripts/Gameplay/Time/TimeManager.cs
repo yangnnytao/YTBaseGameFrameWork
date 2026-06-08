@@ -7,7 +7,7 @@ using YGZFrameWork;
 /// <summary>
 /// 用于时间的管理以及相关工具的处理
 /// </summary>
-public class TimeManager : ManagerMono<TimeManager>
+public class TimeManager : ManagerMono<TimeManager>, IManagerInterface
 {
     public static DateTime DateTime1970 = new DateTime(1970, 1, 1).ToLocalTime();
 

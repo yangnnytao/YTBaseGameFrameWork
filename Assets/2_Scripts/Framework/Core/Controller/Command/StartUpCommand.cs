@@ -19,6 +19,8 @@ namespace YGZFrameWork
             //AppFacade.Instance.RegisterCommand(NotiConst.DISPATCH_MESSAGE, typeof(SocketCommand));
             //-----------------初始化非Mono管理器-----------------------
             ManagerOfManager.Instance.InitDataM();
+            //-----------------启动首屏面板（业务逻辑）-----------------------
+            UIManager.Instance?.OpenPanel("DiceTestPanel");
             //-----------------初始化Mono管理器-----------------------
             //AppFacade.Instance.AddManager<LuaManager>(ManagerName.Lua);
             //AppFacade.Instance.AddManager<PanelManager>(ManagerName.Panel);

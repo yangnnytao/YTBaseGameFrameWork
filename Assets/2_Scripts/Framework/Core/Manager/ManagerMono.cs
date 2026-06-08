@@ -1,7 +1,7 @@
 using UnityEngine;
 using YGZFrameWork;
 
-public class ManagerMono<T> : MonoSingleton<T> where T : ManagerMono<T>
+public class ManagerMono<T> : MonoSingleton<T>, IManagerInterface where T : ManagerMono<T>
 {
     /// <summary> 内置事件 </summary>
     protected EventDispatcher eventDispatcher;
@@ -32,6 +32,11 @@ public class ManagerMono<T> : MonoSingleton<T> where T : ManagerMono<T>
     }
 
     public virtual void RegisterMsg()
+    {
+
+    }
+
+    public virtual void ClearData()
     {
 
     }

@@ -7,10 +7,11 @@ using YGZFrameWork;
 /// 管理器协调者 —— 负责按依赖顺序统一初始化和逆序销毁所有管理器。
 /// 
 /// 设计说明：
-/// 1. 采用显式调用（Xxx.Instance.InitDataM()），IL2CPP / 微信小游戏完全兼容，零反射。
-/// 2. 新增管理器时，在此类中按依赖顺序添加一行即可。
-/// 3. 初始化顺序 = 代码书写顺序（越靠前越早初始化），销毁时自动逆序。
-/// 4. 如需调整顺序，直接移动代码行位置即可。
+/// 1. 完全由 ManagerRegistry 注册表驱动，零硬编码管理器引用。
+/// 2. 新增管理器时，只需在 ManagerRegistry.Entries 中加一行，无需改动此类。
+/// 3. 初始化顺序由 Priority 显式控制，销毁时自动逆序。
+/// 4. 所有管理器统一通过 IManagerInterface 接口调用生命周期方法。
+/// 5. 使用 typeof() + 直接实例引用，IL2CPP / 微信小游戏完全兼容，零反射。
 /// </summary>
 public class ManagerOfManager : Singleton<ManagerOfManager>
 {
@@ -21,41 +22,37 @@ public class ManagerOfManager : Singleton<ManagerOfManager>
     {
         _initOrder.Clear();
 
-        // ========== 基础设施层 —— 最先初始化 ==========
+        var entries = ManagerRegistry.GetInitOrder();
+        foreach (var entry in entries)
+        {
+            object instance = null;
+            try
+            {
+                instance = entry.GetInstance();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ManagerOfManager] 获取管理器实例失败：{entry.Type.Name}，异常：{ex.Message}");
+                continue;
+            }
 
-        // 1. 配置表管理器（所有系统依赖配置数据）
-        CfgToolManager.Instance.InitDataM();
-        _initOrder.Add(CfgToolManager.Instance);
+            if (instance == null)
+            {
+                Debug.LogError($"[ManagerOfManager] 无法获取管理器实例：{entry.Type.Name}");
+                continue;
+            }
 
-        // 2. Canvas 层级管理器（UIManager 依赖它挂载面板）
-        CanvasManager.Instance.InitDataM();
-        _initOrder.Add(CanvasManager.Instance);
+            if (instance is IManagerInterface mgr)
+            {
+                mgr.InitDataM();
+            }
+            else
+            {
+                Debug.LogWarning($"[ManagerOfManager] {entry.Type.Name} 未实现 IManagerInterface，跳过 InitDataM。");
+            }
 
-        // 3. UI 面板管理器（依赖 CanvasManager 的层级）
-        UIManager.Instance.InitDataM();
-        _initOrder.Add(UIManager.Instance);
-
-        // ========== 业务逻辑层 ==========
-
-        // 4. 时间管理器
-        TimeManager.Instance.InitDataM();
-        _initOrder.Add(TimeManager.Instance);
-
-        // 5. 网络管理器
-        NetWorkManager.Instance.InitDataM();
-        _initOrder.Add(NetWorkManager.Instance);
-
-        // 6. 骰子管理器（示例业务管理器）
-        DiceManager.Instance.InitDataM();
-        _initOrder.Add(DiceManager.Instance);
-
-        // ========== 后续新增管理器，按依赖顺序在此添加 ==========
-        // 示例：
-        // GameDataManager.Instance.InitDataM();
-        // _initOrder.Add(GameDataManager.Instance);
-
-        // 启动首屏（保留原有行为）
-        UIManager.Instance?.OpenPanel("DiceTestPanel");
+            _initOrder.Add(instance);
+        }
     }
 
     public override void DestroyM()
@@ -66,17 +63,16 @@ public class ManagerOfManager : Singleton<ManagerOfManager>
             var instance = _initOrder[i];
             if (instance == null) continue;
 
-            switch (instance)
+            if (instance is IManagerInterface mgr)
             {
-                case DiceManager mgr: mgr.DestroyM(); break;
-                case NetWorkManager mgr: mgr.DestroyM(); break;
-                case TimeManager mgr: mgr.DestroyM(); break;
-                case UIManager mgr: mgr.DestroyM(); break;
-                case CanvasManager mgr: mgr.DestroyM(); break;
-                case CfgToolManager mgr: mgr.DestroyM(); break;
-                default:
-                    Debug.LogWarning($"[ManagerOfManager] 未知管理器类型 {instance.GetType().Name}，跳过销毁。");
-                    break;
+                try
+                {
+                    mgr.DestroyM();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[ManagerOfManager] 销毁管理器异常：{instance.GetType().Name}，{ex.Message}");
+                }
             }
         }
 

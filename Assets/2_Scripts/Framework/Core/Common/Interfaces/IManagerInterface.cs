@@ -1,11 +1,1 @@
-﻿public interface IManagerInterface
-{
-	/// <summary> 初始化数据 </summary>
-    void InitDataM() { }
-		
-	/// <summary> 注册消息 </summary>
-	void RegisterMsg();
-	
-	/// <summary> 清空数据 </summary>
-	void ClearData();
-}
+public interface IManagerInterface{	/// <summary> 初始化数据 </summary>    void InitDataM() { }		/// <summary> 销毁数据/释放资源 </summary>	void DestroyM() { }			/// <summary> 注册消息 </summary>	void RegisterMsg();		/// <summary> 清空数据 </summary>	void ClearData();}
