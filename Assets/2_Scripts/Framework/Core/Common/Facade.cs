@@ -48,7 +48,13 @@ namespace YGZFrameWork
             m_controller = Controller.Instance;
         }
 
-        /// <summary> 注册命令 </summary>
+        /// <summary> 注册命令（零反射委托工厂版本，推荐） </summary>
+        public virtual void RegisterCommand(string commandName, Func<ICommand> commandFactory)
+        {
+            m_controller.RegisterCommand(commandName, commandFactory);
+        }
+
+        /// <summary> 注册命令（兼容旧接口） </summary>
         public virtual void RegisterCommand(string commandName, Type commandType)
         {
             m_controller.RegisterCommand(commandName, commandType);
@@ -66,7 +72,17 @@ namespace YGZFrameWork
             return m_controller.HasCommand(commandName);
         }
 
-        /// <summary> 注册多个命令 </summary>
+        /// <summary> 注册多个命令（零反射委托工厂版本） </summary>
+        public void RegisterMultiCommand(Func<ICommand> commandFactory, params string[] commandNames)
+        {
+            int count = commandNames.Length;
+            for (int i = 0; i < count; i++)
+            {
+                RegisterCommand(commandNames[i], commandFactory);
+            }
+        }
+
+        /// <summary> 注册多个命令（兼容旧接口） </summary>
         public void RegisterMultiCommand(Type commandType, params string[] commandNames)
         {
             int count = commandNames.Length;
@@ -74,6 +90,18 @@ namespace YGZFrameWork
             {
                 RegisterCommand(commandNames[i], commandType);
             }
+        }
+
+        /// <summary> 注册消息观察者（统一事件总线入口） </summary>
+        public virtual void RegisterObserver(IView view, params string[] messageNames)
+        {
+            m_controller.RegisterViewCommand(view, messageNames);
+        }
+
+        /// <summary> 移除消息观察者 </summary>
+        public virtual void RemoveObserver(IView view, params string[] messageNames)
+        {
+            m_controller.RemoveViewCommand(view, messageNames);
         }
 
         /// <summary> 删除多个命令 </summary>

@@ -15,7 +15,7 @@ namespace YGZFrameWork
         protected void RegisterMessage(IView view, List<string> messages)
         {
             if (messages == null || messages.Count == 0) return;
-            Controller.Instance.RegisterViewCommand(view, messages.ToArray());
+            Facade.RegisterObserver(view, messages.ToArray());
         }
 
         /// <summary>
@@ -26,7 +26,7 @@ namespace YGZFrameWork
         protected void RemoveMessage(IView view, List<string> messages)
         {
             if (messages == null || messages.Count == 0) return;
-            Controller.Instance.RemoveViewCommand(view, messages.ToArray());
+            Facade.RemoveObserver(view, messages.ToArray());
         }
 
         protected AppFacade Facade

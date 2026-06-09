@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -7,7 +7,10 @@ using System.Collections.Generic;
 /// </summary>
 public interface IController
 {
-    /// <summary> 注册命令 </summary>
+    /// <summary> 注册命令（零反射：使用委托工厂替代 Type） </summary>
+    void RegisterCommand(string messageName, Func<ICommand> commandFactory);
+
+    /// <summary> 注册命令（兼容旧接口，内部转为委托） </summary>
     void RegisterCommand(string messageName, Type commandType);
 
     /// <summary> 注册查看命令 </summary>

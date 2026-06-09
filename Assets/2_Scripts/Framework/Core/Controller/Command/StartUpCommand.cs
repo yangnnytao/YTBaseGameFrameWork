@@ -16,7 +16,7 @@ namespace YGZFrameWork
                 AppView appView = gameMgr.AddComponent<AppView>();
             }
             //-----------------关联命令-----------------------
-            //AppFacade.Instance.RegisterCommand(NotiConst.DISPATCH_MESSAGE, typeof(SocketCommand));
+            //AppFacade.Instance.RegisterCommand(NotiConst.DISPATCH_MESSAGE, () => new SocketCommand());
             //-----------------初始化非Mono管理器-----------------------
             ManagerOfManager.Instance.InitDataM();
             //-----------------启动首屏面板（业务逻辑）-----------------------

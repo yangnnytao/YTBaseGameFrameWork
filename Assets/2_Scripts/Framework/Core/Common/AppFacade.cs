@@ -35,8 +35,8 @@ namespace YGZFrameWork
         override protected void InitFramework()
         {
             base.InitFramework();
-            //注册启动框架事件
-            RegisterCommand(NotiConst.START_UP, typeof(StartUpCommand));
+            //注册启动框架事件（零反射：使用委托工厂）
+            RegisterCommand(NotiConst.START_UP, () => new StartUpCommand());
         }
 
         /// <summary> 启动框架 </summary>
