@@ -6,7 +6,6 @@ using UnityEngine;
 
 namespace YGZFrameWork
 {
-
     public abstract class CfgToolClass
     {
         protected abstract string mTableName { get; }
@@ -17,15 +16,17 @@ namespace YGZFrameWork
         private static readonly List<CfgToolClass> _registry = new List<CfgToolClass>();
         public static IReadOnlyList<CfgToolClass> AllRegistered => _registry;
 
-        public CfgToolClass():base()
+        public CfgToolClass()
         {
             _tableHanle = CfgToolManager.Instance;
+            // 自动自注册到全局注册表
+            AutoRegister(this);
         }
 
         /// <summary>
-        /// 子类在首次创建实例时调用，自动加入注册表
+        /// 自动加入注册表（内部方法，子类无需调用）
         /// </summary>
-        protected static void Register(CfgToolClass tool)
+        private static void AutoRegister(CfgToolClass tool)
         {
             if (tool != null && !_registry.Contains(tool))
                 _registry.Add(tool);
@@ -45,7 +46,11 @@ namespace YGZFrameWork
     {
         protected Dictionary<TKeyType, TCfgClass> _cfgDataDic = null;
 
-        public CfgToolBase() : base() {
+        public CfgToolBase() : base()
+        {
+            // 自动向 CfgToolManager 注册（用当前类型作为键）
+            CfgToolManager.Instance.RegisterCfgTool(this);
+
             List<TCfgClass> luaDict = _tableHanle.Load<List<TCfgClass>>(mTableName);
             _cfgDataDic = new Dictionary<TKeyType, TCfgClass>(luaDict.Count);
             for (int i = 0; i < luaDict.Count; i++)

@@ -23,8 +23,7 @@ public class HeroBaseCfgTool : CfgToolBase<int, HeroBaseCfgData>
             if (_instance == null)
             {
                 _instance = new HeroBaseCfgTool();
-                Register(_instance);  // 自注册到全局注册表
-                CfgToolManager.Instance.NewCfgTool(ECfgToolType.cfg_HeroBase, _instance);
+                // 自注册和向 CfgToolManager 注册已在基类构造中自动完成
             }
             return _instance;
         }

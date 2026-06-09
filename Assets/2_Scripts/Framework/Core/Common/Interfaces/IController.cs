@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using YGZFrameWork;
 
 /// <summary>
 /// UI控制器事件接口

@@ -35,6 +35,16 @@ namespace YGZFrameWork
     }
 
     /// <summary>
+    /// 面板动画模式
+    /// </summary>
+    public enum PanelAnimMode
+    {
+        None = 0,       // 无动画
+        Animator = 1,   // 使用 Animator Trigger
+        Tween = 2,      // 使用代码插值动画（Coroutine + Lerp）
+    }
+
+    /// <summary>
     /// 单条面板配置数据
     /// </summary>
     [Serializable]
@@ -49,11 +59,20 @@ namespace YGZFrameWork
         /// <summary>所属 Canvas 层级</summary>
         public CanvasLayer canvasLayer;
 
-        /// <summary>Animator 打开动画 Trigger 名称（为空则不播放）</summary>
+        /// <summary>动画模式（Animator / Tween / None）</summary>
+        public PanelAnimMode animMode = PanelAnimMode.None;
+
+        /// <summary>Animator 打开动画 Trigger 名称（animMode=Animator 时生效）</summary>
         public string openAnimationTrigger;
 
-        /// <summary>Animator 关闭动画 Trigger 名称（为空则不播放）</summary>
+        /// <summary>Animator 关闭动画 Trigger 名称（animMode=Animator 时生效）</summary>
         public string closeAnimationTrigger;
+
+        /// <summary>Tween 动画类型（animMode=Tween 时生效）</summary>
+        public PanelAnimType tweenAnimType = PanelAnimType.Fade;
+
+        /// <summary>Tween 动画时长（秒，animMode=Tween 时生效）</summary>
+        public float tweenDuration = 0.3f;
 
         /// <summary>是否独占面板（打开时自动关闭同层级其他非独占面板）</summary>
         public bool isExclusive;

@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using YGZFrameWork;
 using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// 骰子测试面板 —— 用于验证 DiceManager + DiceRollAnimation 的 UI 测试界面
@@ -31,9 +32,9 @@ public class DiceTestPanel : BasePanel
             m_ForceRollButton.onClick.AddListener(OnForceRollButtonClicked);
     }
 
-    public override void OnOpen(object data)
+    public override void OnOpen(object data, Action onComplete = null)
     {
-        base.OnOpen(data);
+        base.OnOpen(data, onComplete);
         // 注册骰子相关消息监听
         RegisterMessage(this, new List<string>
         {
@@ -46,9 +47,9 @@ public class DiceTestPanel : BasePanel
         m_ResultText.text = "点击投骰";
     }
 
-    public override void OnClose()
+    public override void OnClose(Action onComplete = null)
     {
-        base.OnClose();
+        base.OnClose(onComplete);
         // 移除按钮监听
         if (m_RollButton != null)
             m_RollButton.onClick.RemoveListener(OnRollButtonClicked);

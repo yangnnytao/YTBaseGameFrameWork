@@ -154,16 +154,17 @@ namespace YGZFrameWork
             // 挂载到对应 Canvas 层
             AttachToCanvasLayer(panel, config.canvasLayer);
 
-            // 推入栈
-            PushToStack(panel);
+            // 执行打开生命周期（动画完成后推入栈、广播事件）
+            panel.OnOpen(data, () =>
+            {
+                // 动画完成后推入栈
+                PushToStack(panel);
+                Debug.Log($"[UIManager] 面板打开完成：{panelId}");
+                onComplete?.Invoke();
 
-            // 执行打开生命周期（适配现有 BasePanel.OnOpen）
-            panel.OnOpen(data);
-            Debug.Log($"[UIManager] 面板打开完成：{panelId}");
-            onComplete?.Invoke();
-
-            // 广播事件
-            AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_OPENED, panelId);
+                // 广播事件
+                AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_OPENED, panelId);
+            });
         }
 
         /// <summary>
@@ -187,27 +188,28 @@ namespace YGZFrameWork
                 return;
             }
 
-            // 执行关闭生命周期（适配现有 BasePanel.OnClose）
-            panel.OnClose();
-
-            // 从栈中移除
-            RemoveFromStack(panel);
-
-            // 处理缓存/销毁
-            HandlePanelAfterClose(panel);
-
-            // 恢复下层面板
-            var cfg = GetPanelConfig(panel.PanelId);
-            if (cfg != null && cfg.pauseBelow)
+            // 执行关闭生命周期（动画完成后再清理）
+            panel.OnClose(() =>
             {
-                ResumePanelsBelow(cfg.canvasLayer);
-            }
+                // 从栈中移除
+                RemoveFromStack(panel);
 
-            Debug.Log($"[UIManager] 面板关闭完成：{panelId}");
-            onComplete?.Invoke();
+                // 处理缓存/销毁
+                HandlePanelAfterClose(panel);
 
-            // 广播事件
-            AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_CLOSED, panelId);
+                // 恢复下层面板
+                var cfg = GetPanelConfig(panel.PanelId);
+                if (cfg != null && cfg.pauseBelow)
+                {
+                    ResumePanelsBelow(cfg.canvasLayer);
+                }
+
+                Debug.Log($"[UIManager] 面板关闭完成：{panelId}");
+                onComplete?.Invoke();
+
+                // 广播事件
+                AppFacade.Instance.SendMessageCommand(NotiConst.UI_PANEL_CLOSED, panelId);
+            });
         }
 
         /// <summary>
@@ -246,14 +248,13 @@ namespace YGZFrameWork
         /// </summary>
         public void ClearAllPanels()
         {
-            // 逆序关闭所有面板
+            // 逆序关闭所有面板（跳过动画，直接清理）
             for (int i = m_PanelStack.Count - 1; i >= 0; i--)
             {
                 var panel = m_PanelStack[i];
                 if (panel.IsOpen)
                 {
-                    // 强制关闭（跳过动画）
-                    panel.OnClose();
+                    panel.Hide();
                     HandlePanelDestroy(panel);
                 }
             }

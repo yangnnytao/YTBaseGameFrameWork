@@ -2,7 +2,7 @@ using YGZFrameWork;
 
 /// <summary>
 /// 示例：新增配置表时，只需创建此文件
-/// 并在 CfgToolManager.LoadAll() 中加一行 _ = XxxCfgTool.Instance;
+/// 并在 CfgToolRegistry 中加一行 (typeof(XxxCfgTool), () => XxxCfgTool.Instance)
 /// </summary>
 public class ItemCfgData : CfgBase<int>
 {
@@ -24,8 +24,7 @@ public class ItemCfgTool : CfgToolBase<int, ItemCfgData>
             if (_instance == null)
             {
                 _instance = new ItemCfgTool();
-                Register(_instance);  // 自注册到全局注册表
-                CfgToolManager.Instance.NewCfgTool(ECfgToolType.cfg_Item, _instance);
+                // 自注册和向 CfgToolManager 注册已在基类构造中自动完成
             }
             return _instance;
         }

@@ -9,21 +9,22 @@ using UnityEngine.AddressableAssets;
 
 namespace YGZFrameWork
 {
-    public enum ECfgToolType
-    {
-        Start,
-        cfg_HeroBase,
-        cfg_Item,   // 示例：新增 Item 配置表
-        End,
-    }
     /// <summary>
     /// 配置表管理器 — 标准单例，兼容旧 TableDataManager 接口
+    /// 
+    /// 设计说明：
+    /// 1. 配置表字典以 Type 为键，彻底移除 ECfgToolType 枚举硬编码。
+    /// 2. 新增配置表时，只需在 CfgToolRegistry 中加一行，无需改动此类。
+    /// 3. 所有配置表通过 CfgToolBase 构造时自动注册到本管理器。
+    /// 4. 使用 typeof() 直接引用，IL2CPP / 微信小游戏完全兼容。
     /// </summary>
     public class CfgToolManager : Singleton<CfgToolManager>, IManagerInterface
     {
         public static CfgToolManager Instance => GetInstance();
 
-        public Dictionary<ECfgToolType, CfgToolClass> _cfgToolDic = new Dictionary<ECfgToolType, CfgToolClass>();
+        /// <summary>配置表字典：Type → CfgToolClass（以配置表 Tool 类型为键）</summary>
+        public Dictionary<Type, CfgToolClass> _cfgToolDic = new Dictionary<Type, CfgToolClass>();
+
         /// <summary>
         /// 配置文件相对路径（基于 Application.dataPath，已包含 Assets 目录）
         /// Editor 下直接读文件，运行时使用 Addressables
@@ -58,19 +59,59 @@ namespace YGZFrameWork
 
         #endregion
 
+        #region 注册与获取
+
+        /// <summary>
+        /// 注册配置表（由 CfgToolBase 构造时自动调用）
+        /// </summary>
+        public void RegisterCfgTool(CfgToolClass tool)
+        {
+            if (tool == null) return;
+            var type = tool.GetType();
+            if (!_cfgToolDic.ContainsKey(type))
+                _cfgToolDic[type] = tool;
+        }
+
+        /// <summary>
+        /// 泛型获取配置表实例
+        /// </summary>
+        public T GetCfgTool<T>() where T : CfgToolClass
+        {
+            var type = typeof(T);
+            if (_cfgToolDic.TryGetValue(type, out var tool))
+                return tool as T;
+            return null;
+        }
+
+        /// <summary>
+        /// 按类型获取配置表实例（非泛型版本）
+        /// </summary>
+        public CfgToolClass GetCfgTool(Type type)
+        {
+            if (type == null) return null;
+            if (_cfgToolDic.TryGetValue(type, out var tool))
+                return tool;
+            return null;
+        }
+
+        #endregion
+
         #region 加载
 
         public static void LoadAll()
         {
-            // 触发所有配置表单例的懒加载，自动完成自注册
-            _ = HeroBaseCfgTool.Instance;
-            _ = ItemCfgTool.Instance;
-            // 新增配置表 = 在这里加一行 _ = XxxCfgTool.Instance;
-
-            // 验证加载结果
-            foreach (var tool in CfgToolClass.AllRegistered)
+            // 遍历注册表触发懒加载（IL2CPP 防裁剪 + 统一入口）
+            foreach (var entry in CfgToolRegistry.Entries)
             {
-                UnityEngine.Debug.Log("[CfgTool] Loaded: " + tool.GetType().Name);
+                try
+                {
+                    var instance = entry.GetInstance();
+                    UnityEngine.Debug.Log("[CfgTool] Loaded: " + entry.Type.Name);
+                }
+                catch (Exception ex)
+                {
+                    UnityEngine.Debug.LogError($"[CfgToolManager] 加载配置表失败: {entry.Type.Name}, {ex.Message}");
+                }
             }
         }
 
@@ -123,15 +164,6 @@ namespace YGZFrameWork
                 Debug.LogError($"加载配置文件失败 {fileName}: {e.Message}");
                 return default;
             }
-        }
-
-        public CfgToolClass NewCfgTool<T>(ECfgToolType type_, T cfgData_) where T : CfgToolClass
-        {
-            if (_cfgToolDic.TryGetValue(type_, out CfgToolClass outTool_))
-                return outTool_;
-            else
-                _cfgToolDic[type_] = cfgData_;
-            return _cfgToolDic[type_];
         }
 
         #endregion
