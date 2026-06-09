@@ -382,11 +382,11 @@ namespace YGZFrameWork
                 }
             }
 
-            // 加载预制体
-            GameObject prefab = Resources.Load<GameObject>(config.prefabPath);
+            // 加载预制体（统一走 ResourceManager）
+            GameObject prefab = ResourceManager.Instance.Loader.Load<GameObject>(config.prefabPath);
             if (prefab == null)
             {
-                Debug.LogError($"[UIManager] 预制体加载失败：Resources/{config.prefabPath}.prefab");
+                Debug.LogError($"[UIManager] 预制体加载失败：{config.prefabPath}");
                 return null;
             }
 

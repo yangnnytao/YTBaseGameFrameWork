@@ -24,7 +24,7 @@ namespace YGZFrameWork
         {
             _configMap = new Dictionary<string, PanelConfigEntry>();
 
-            _configAsset = Resources.Load<PanelConfigData>(ConfigAssetPath);
+            _configAsset = ResourceManager.Instance.Loader.Load<PanelConfigData>(ConfigAssetPath);
             if (_configAsset == null)
             {
                 Debug.LogError($"[PanelConfigLoader] 未找到配置资产：Resources/{ConfigAssetPath}.asset。请右键 Create → YGZFrameWork/PanelConfig 创建并放入 Resources/Config/ 目录。");

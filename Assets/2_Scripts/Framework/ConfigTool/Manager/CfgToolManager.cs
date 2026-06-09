@@ -3,9 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-#if !UNITY_EDITOR
-using UnityEngine.AddressableAssets;
-#endif
 
 namespace YGZFrameWork
 {
@@ -132,16 +129,15 @@ namespace YGZFrameWork
                 jsonText = reader.ReadToEnd();
             }
 #else
-            // 运行时通过 Addressables 加载 TextAsset，支持热更
-            var handle = Addressables.LoadAssetAsync<TextAsset>(fileName);
-            var textAsset = handle.WaitForCompletion();
+            // 运行时通过 ResourceManager 统一加载 TextAsset，支持热更
+            var textAsset = ResourceManager.Instance.Loader.Load<TextAsset>(fileName);
             if (textAsset == null)
             {
-                Debug.LogError($"Addressables 加载失败: {fileName}，请检查 Addressables Group 中是否包含该配置");
+                Debug.LogError($"配置加载失败: {fileName}，请检查 Addressables Group 或 Resources 目录中是否包含该配置");
                 return default;
             }
             jsonText = textAsset.text;
-            Addressables.Release(handle);
+            ResourceManager.Instance.Loader.Release(textAsset);
 #endif
 
             if (string.IsNullOrEmpty(jsonText))
