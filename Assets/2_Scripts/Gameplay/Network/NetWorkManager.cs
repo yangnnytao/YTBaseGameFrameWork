@@ -1,211 +1,234 @@
-using UnityEngine;
-using System.Collections;
-using UnityEngine.Networking;
-using System.Collections.Generic;
-using UnityEngine.Events;
 using System;
-using System.Net;
-using System.Globalization;
-using System.Text;
-using SimpleJSON;
-using YGZFrameWork;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Networking;
 
-/// <summary>
-/// 网络管理器
-/// </summary>
-public class NetWorkManager : ManagerMono<NetWorkManager>, IManagerInterface
+namespace YGZFrameWork
 {
-    public UnityEvent NetworkChangeEvent = new UnityEvent();
-
-    public const int TIMEOUT = 5;//网络请求超时
-
-    public override void InitDataM()
+    /// <summary>
+    /// HTTP 请求任务
+    /// </summary>
+    public class HttpRequestTask
     {
-        base.InitDataM();
-        Debug.Log("MyNetWorkManager Init");
-    }
-    public void SendPostMessage(string url, Dictionary<string, string> post, UnityAction<String> unityAction = null, UnityAction errorAction = null, int timeOut = TIMEOUT)
-    {
-        StartCoroutine(SendHttpMessage(url, post, "POST", unityAction, errorAction, timeOut));
-    }
-
-    public void SendGetMessage(string url, Dictionary<string, string> post, UnityAction<String> unityAction = null, UnityAction errorAction = null, int timeOut = TIMEOUT)
-    {
-        StartCoroutine(SendHttpMessage(url, post, "GET", unityAction, errorAction, timeOut));
+        public string Url;
+        public string Method; // GET / POST / JSON
+        public Dictionary<string, string> FormData;
+        public string JsonBody;
+        public int Timeout;
+        public int RetryCount;      // 剩余重试次数
+        public int MaxRetry;        // 最大重试次数
+        public Action<string> OnSuccess;
+        public Action OnError;
+        public float StartTime;
     }
 
-    public void SendJson(string url, string jsonData, UnityAction<String> unityAction = null, UnityAction errorAction = null, int timeOut = TIMEOUT)
+    /// <summary>
+    /// 网络管理器 —— 支持请求队列、并发控制、重试与熔断。
+    /// </summary>
+    public class NetWorkManager : ManagerMono<NetWorkManager>, IManagerInterface
     {
-        StartCoroutine(SendJsonMessage(url, jsonData, unityAction, errorAction, timeOut));
-    }
+        public static NetWorkManager Instance => MonoSingleton<NetWorkManager>.Instance;
 
-    public void SendJson<T>(string url, string jsonData, UnityAction<T> unityAction = null, UnityAction errorAction = null, int timeOut = TIMEOUT)
-    {
-        StartCoroutine(SendJsonMessage(url, jsonData, unityAction, errorAction, timeOut));
-    }
+        public const int DEFAULT_TIMEOUT = 5;
+        public const int MAX_CONCURRENT = 3;      // 最大并发请求数
+        public const int MAX_RETRY = 2;           // 默认最大重试次数
 
-    IEnumerator SendJsonMessage(string url, string jsonData, UnityAction<String> unityAction = null, UnityAction errorAction = null, int timeOut = TIMEOUT)
-    {
-        float runTime = Time.unscaledTime;
-        if (Application.internetReachability == NetworkReachability.NotReachable)
+        // 请求队列
+        private readonly Queue<HttpRequestTask> _requestQueue = new Queue<HttpRequestTask>();
+        private int _currentConcurrent = 0;
+
+        // 熔断状态
+        private int _consecutiveFailures = 0;
+        private const int CIRCUIT_BREAK_THRESHOLD = 5; // 连续失败5次触发熔断
+        private const float CIRCUIT_BREAK_COOLDOWN = 10f; // 熔断冷却10秒
+        private float _circuitBreakResetTime = 0f;
+        private bool _isCircuitBroken => _consecutiveFailures >= CIRCUIT_BREAK_THRESHOLD
+                                         && Time.time < _circuitBreakResetTime;
+
+        public override void InitDataM()
         {
-            if (errorAction != null)
-            {
-                errorAction.Invoke();
-            }
-            yield break;
+            base.InitDataM();
+            Debug.Log("[NetWorkManager] 初始化完成");
         }
-        byte[] body = Encoding.UTF8.GetBytes(jsonData);
-        UnityWebRequest unityWeb = new UnityWebRequest(url, "POST");
-        unityWeb.uploadHandler = new UploadHandlerRaw(body);
-        unityWeb.SetRequestHeader("Content-Type", "application/json;charset=utf-8");
-        unityWeb.downloadHandler = new DownloadHandlerBuffer();
-        unityWeb.timeout = timeOut;
-        yield return unityWeb.SendWebRequest();
-        if (unityWeb.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogWarning(string.Format("url:{0}-->jsonData:{1},error:{2},runTime:{3}", url, jsonData, unityWeb.error, Time.unscaledTime - runTime));
-            if (errorAction != null)
-            {
-                errorAction.Invoke();
-            }
-        }
-        else
-        {
-            if (unityAction != null)
-            {
-                string result = unityWeb.downloadHandler.text;
-                Debug.Log(string.Format("url:{0}-->jsonData:{1},result:{2},runTime:{3}", url, jsonData, result, Time.unscaledTime - runTime));
-                unityAction.Invoke(result);
-            }
-            else
-            {
-                Debug.Log(string.Format("url:{0}-->jsonData:{1}", url, jsonData));
-            }
-        }
-    }
 
-    IEnumerator SendJsonMessage<T>(string url, string jsonData, UnityAction<T> unityAction = null, UnityAction errorAction = null, int timeOut = TIMEOUT)
-    {
-        if (Application.internetReachability == NetworkReachability.NotReachable)
-        {
-            if (errorAction != null)
-            {
-                errorAction.Invoke();
-            }
-            yield break;
-        }
-        float runTime = Time.unscaledTime;
-        byte[] body = Encoding.UTF8.GetBytes(jsonData);
-        UnityWebRequest unityWeb = new UnityWebRequest(url, "POST");
-        unityWeb.uploadHandler = new UploadHandlerRaw(body);
-        unityWeb.SetRequestHeader("Content-Type", "application/json;charset=utf-8");
-        unityWeb.downloadHandler = new DownloadHandlerBuffer();
-        unityWeb.timeout = timeOut;
-        yield return unityWeb.SendWebRequest();
-        if (unityWeb.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogWarning(string.Format("url:{0}-->jsonData:{1},error:{2},runTime:{3}", url, jsonData, unityWeb.error, Time.unscaledTime - runTime));
-            if (errorAction != null)
-            {
-                errorAction.Invoke();
-            }
-        }
-        else
-        {
-            if (unityAction != null)
-            {
-                string result = unityWeb.downloadHandler.text;
+        #region 公共 API
 
-                Debug.Log(string.Format("url:{0}-->jsonData:{1},result:{2},runTime:{3}", url, jsonData, result, Time.unscaledTime - runTime));
-                if (!string.IsNullOrEmpty(result))
+        /// <summary>发送 GET 请求</summary>
+        public void SendGet(string url, Dictionary<string, string> param = null,
+                            Action<string> onSuccess = null, Action onError = null,
+                            int timeout = DEFAULT_TIMEOUT, int maxRetry = MAX_RETRY)
+        {
+            EnqueueRequest(url, "GET", param, null, timeout, maxRetry, onSuccess, onError);
+        }
+
+        /// <summary>发送 POST 请求</summary>
+        public void SendPost(string url, Dictionary<string, string> form = null,
+                             Action<string> onSuccess = null, Action onError = null,
+                             int timeout = DEFAULT_TIMEOUT, int maxRetry = MAX_RETRY)
+        {
+            EnqueueRequest(url, "POST", form, null, timeout, maxRetry, onSuccess, onError);
+        }
+
+        /// <summary>发送 JSON 请求</summary>
+        public void SendJson(string url, string jsonBody,
+                             Action<string> onSuccess = null, Action onError = null,
+                             int timeout = DEFAULT_TIMEOUT, int maxRetry = MAX_RETRY)
+        {
+            EnqueueRequest(url, "JSON", null, jsonBody, timeout, maxRetry, onSuccess, onError);
+        }
+
+        #endregion
+
+        #region 请求队列与执行
+
+        private void EnqueueRequest(string url, string method,
+                                    Dictionary<string, string> form, string jsonBody,
+                                    int timeout, int maxRetry,
+                                    Action<string> onSuccess, Action onError)
+        {
+            if (_isCircuitBroken)
+            {
+                Debug.LogWarning("[NetWorkManager] 熔断中，请求被拒绝");
+                onError?.Invoke();
+                return;
+            }
+
+            var task = new HttpRequestTask
+            {
+                Url = url,
+                Method = method,
+                FormData = form,
+                JsonBody = jsonBody,
+                Timeout = timeout,
+                MaxRetry = maxRetry,
+                RetryCount = maxRetry,
+                OnSuccess = onSuccess,
+                OnError = onError,
+                StartTime = Time.time
+            };
+
+            _requestQueue.Enqueue(task);
+            ProcessQueue();
+        }
+
+        private void ProcessQueue()
+        {
+            while (_currentConcurrent < MAX_CONCURRENT && _requestQueue.Count > 0)
+            {
+                var task = _requestQueue.Dequeue();
+                _currentConcurrent++;
+                StartCoroutine(ExecuteRequest(task));
+            }
+        }
+
+        private IEnumerator ExecuteRequest(HttpRequestTask task)
+        {
+            // 检查网络
+            if (Application.internetReachability == NetworkReachability.NotReachable)
+            {
+                Debug.LogWarning("[NetWorkManager] 无网络连接");
+                HandleFailure(task, "无网络");
+                yield break;
+            }
+
+            UnityWebRequest request = null;
+
+            if (task.Method == "GET")
+            {
+                string url = task.Url;
+                if (task.FormData != null && task.FormData.Count > 0)
                 {
-                    T t = JsonUtility.FromJson<T>(result);
-                    unityAction.Invoke(t);
+                    url += "?";
+                    foreach (var pair in task.FormData)
+                        url += $"{pair.Key}={UnityWebRequest.EscapeURL(pair.Value)}&";
+                    url = url.TrimEnd('&');
                 }
+                request = UnityWebRequest.Get(url);
             }
-            else
+            else if (task.Method == "POST")
             {
-                Debug.Log(string.Format("url:{0}-->jsonData:{1}", url, jsonData));
-            }
-        }
-    }
-
-    IEnumerator SendHttpMessage(string url, Dictionary<string, string> post = null, string method = "GET", UnityAction<string> unityAction = null, UnityAction errorAction = null, int timeOut = TIMEOUT)
-    {
-        if (Application.internetReachability == NetworkReachability.NotReachable)
-        {
-            if (errorAction != null)
-            {
-                errorAction.Invoke();
-            }
-            yield break;
-        }
-        float runTime = Time.unscaledTime;
-        UnityWebRequest request;
-
-        if (string.Equals(method.ToUpper(), "POST"))
-        {
-            WWWForm form = new WWWForm();
-            if (post != null && post.Count > 0)
-            {
-                foreach (KeyValuePair<string, string> pair in post)
+                WWWForm form = new WWWForm();
+                if (task.FormData != null)
                 {
-                    form.AddField(pair.Key, pair.Value);
+                    foreach (var pair in task.FormData)
+                        form.AddField(pair.Key, pair.Value);
                 }
+                request = UnityWebRequest.Post(task.Url, form);
             }
-            request = UnityWebRequest.Post(url, form);
-        }
-        else
-        {
-            if (post != null && post.Count > 0)
+            else if (task.Method == "JSON")
             {
-                url += "?";
-                foreach (KeyValuePair<string, string> pair in post)
-                {
-                    url += pair.Key + "=" + pair.Value + "&";
-                }
-                url = url.Substring(0, url.Length - 1);
+                byte[] body = System.Text.Encoding.UTF8.GetBytes(task.JsonBody ?? "{}");
+                request = new UnityWebRequest(task.Url, "POST");
+                request.uploadHandler = new UploadHandlerRaw(body);
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json;charset=utf-8");
             }
-            request = UnityWebRequest.Get(url);
-        }
-        request.timeout = timeOut;
-        yield return request.SendWebRequest();
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogWarning(string.Format("url:{0}-->post:{1},error:{2},runTime:{3}", url, post.ToString(), request.error, Time.unscaledTime - runTime));
-            if (errorAction != null)
+
+            if (request == null)
             {
-                errorAction.Invoke();
+                HandleFailure(task, "请求构建失败");
+                yield break;
             }
-        }
-        else
-        {
-            if (unityAction != null)
+
+            request.timeout = task.Timeout;
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
             {
                 string text = request.downloadHandler.text;
-                Debug.Log(string.Format("url:{0}-->post:{1},text:{2},runTime:{3}", url, post.ToString(), text, Time.unscaledTime - runTime));
-                unityAction.Invoke(text);
+                Debug.Log($"[NetWorkManager] 请求成功: {task.Url}, 耗时: {Time.time - task.StartTime:F2}s");
+                _consecutiveFailures = 0; // 重置失败计数
+                task.OnSuccess?.Invoke(text);
+            }
+            else
+            {
+                HandleFailure(task, request.error);
+            }
+
+            request.Dispose();
+            _currentConcurrent--;
+            ProcessQueue(); // 继续处理队列
+        }
+
+        private void HandleFailure(HttpRequestTask task, string error)
+        {
+            Debug.LogWarning($"[NetWorkManager] 请求失败: {task.Url}, 错误: {error}, 剩余重试: {task.RetryCount}");
+
+            if (task.RetryCount > 0)
+            {
+                task.RetryCount--;
+                // 指数退避：等待时间随重试次数增加
+                float delay = Mathf.Pow(2, task.MaxRetry - task.RetryCount);
+                StartCoroutine(RetryAfterDelay(task, delay));
+            }
+            else
+            {
+                _consecutiveFailures++;
+                if (_consecutiveFailures >= CIRCUIT_BREAK_THRESHOLD)
+                {
+                    _circuitBreakResetTime = Time.time + CIRCUIT_BREAK_COOLDOWN;
+                    Debug.LogError($"[NetWorkManager] 触发熔断！连续失败 {_consecutiveFailures} 次，冷却 {CIRCUIT_BREAK_COOLDOWN} 秒");
+                }
+                task.OnError?.Invoke();
             }
         }
+
+        private IEnumerator RetryAfterDelay(HttpRequestTask task, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            _requestQueue.Enqueue(task);
+            ProcessQueue();
+        }
+
+        #endregion
+
+        public void RegisterMsg() { }
+        public void ClearData()
+        {
+            _requestQueue.Clear();
+            _currentConcurrent = 0;
+            _consecutiveFailures = 0;
+        }
     }
-
-    public void RegisterMsg()
-    {
-        // 如需注册消息，请在此实现；当前无消息需要注册
-    }
-
-    public void ClearData()
-    {
-        // 当前无数据需要清空
-    }
-}
-
-/// <summary>网络数据</summary>
-public class URL
-{
-    public static string TIMEURL = "http://api.m.taobao.com/rest/api3.do?api=mtop.common.getTimestamp";
-
-    /// <summary>服务器加载地址 —— 请在发布前通过配置注入或环境变量覆盖</summary>
-    public static string LOAD = "http://localhost:8080/load.do"; // 默认本地调试地址，生产环境请覆盖
 }

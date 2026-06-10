@@ -90,7 +90,7 @@ public class TimeManager : ManagerMono<TimeManager>, IManagerInterface
     public void GetSeverTime(UnityAction cb = null)
     {
         return;
-        NetWorkManager.Instance.SendGetMessage(URL.TIMEURL, null, (string res) =>
+        NetWorkManager.Instance.SendGet(URL.TIMEURL, null, (string res) =>
         {
             try
             {
