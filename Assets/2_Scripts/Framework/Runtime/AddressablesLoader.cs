@@ -16,7 +16,7 @@ namespace YGZFrameWork
     {
         public static readonly AddressablesLoader Instance = new AddressablesLoader();
 
-        public T Load<T>(string path) where T : UnityEngine.Object
+        public T Load<T>(string path, ResourceUnloadType unloadType = ResourceUnloadType.UnloadLate) where T : UnityEngine.Object
         {
 #if USE_ADDRESSABLES
             if (string.IsNullOrEmpty(path))
@@ -33,11 +33,11 @@ namespace YGZFrameWork
             return asset;
 #else
             Debug.LogWarning("[AddressablesLoader] USE_ADDRESSABLES 未定义，降级为 ResourcesLoader");
-            return ResourcesLoader.Instance.Load<T>(path);
+            return ResourcesLoader.Instance.Load<T>(path, unloadType);
 #endif
         }
 
-        public void LoadAsync<T>(string path, Action<T> onComplete) where T : UnityEngine.Object
+        public void LoadAsync<T>(string path, Action<T> onComplete, ResourceUnloadType unloadType = ResourceUnloadType.UnloadLate) where T : UnityEngine.Object
         {
 #if USE_ADDRESSABLES
             var handle = Addressables.LoadAssetAsync<T>(path);
@@ -54,18 +54,18 @@ namespace YGZFrameWork
                 }
             };
 #else
-            ResourcesLoader.Instance.LoadAsync(path, onComplete);
+            ResourcesLoader.Instance.LoadAsync(path, onComplete, unloadType);
 #endif
         }
 
-        public GameObject LoadPrefab(string path)
+        public GameObject LoadPrefab(string path, ResourceUnloadType unloadType = ResourceUnloadType.UnloadLate)
         {
-            var prefab = Load<GameObject>(path);
+            var prefab = Load<GameObject>(path, unloadType);
             if (prefab == null) return null;
             return UnityEngine.Object.Instantiate(prefab);
         }
 
-        public void LoadPrefabAsync(string path, Action<GameObject> onComplete)
+        public void LoadPrefabAsync(string path, Action<GameObject> onComplete, ResourceUnloadType unloadType = ResourceUnloadType.UnloadLate)
         {
             LoadAsync<GameObject>(path, prefab =>
             {
@@ -75,7 +75,7 @@ namespace YGZFrameWork
                     return;
                 }
                 onComplete?.Invoke(UnityEngine.Object.Instantiate(prefab));
-            });
+            }, unloadType);
         }
 
         public void Release(UnityEngine.Object asset)
