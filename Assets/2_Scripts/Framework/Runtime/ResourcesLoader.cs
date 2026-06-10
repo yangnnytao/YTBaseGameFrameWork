@@ -4,13 +4,13 @@ namespace YGZFrameWork
 {
     /// <summary>
     /// Resources 加载器 —— 基于 Unity Resources.Load 的同步加载实现。
-    /// 适用于编辑器调试、小型项目、或作为 Addressables 的降级回退。
+    /// 适用于编辑器调试、小型项目、或作为 AssetBundle 的降级回退。
     /// </summary>
     public class ResourcesLoader : IResourceLoader
     {
         public static readonly ResourcesLoader Instance = new ResourcesLoader();
 
-        public T Load<T>(string path) where T : UnityEngine.Object
+        public T Load<T>(string path, ResourceUnloadType unloadType = ResourceUnloadType.UnloadLate) where T : UnityEngine.Object
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -25,26 +25,26 @@ namespace YGZFrameWork
             return asset;
         }
 
-        public void LoadAsync<T>(string path, System.Action<T> onComplete) where T : UnityEngine.Object
+        public void LoadAsync<T>(string path, System.Action<T> onComplete, ResourceUnloadType unloadType = ResourceUnloadType.UnloadLate) where T : UnityEngine.Object
         {
-            // Resources.LoadAsync 是异步的，但这里用同步简化
             var request = Resources.LoadAsync<T>(path);
-            // 简单轮询等待完成（实际项目中可优化为 Coroutine）
-            while (!request.isDone)
-            {
-                // 阻塞等待，仅用于简化
-            }
+            CoroutineRunner.Instance.StartCoroutine(LoadAsyncCoroutine(request, onComplete));
+        }
+
+        private System.Collections.IEnumerator LoadAsyncCoroutine<T>(ResourceRequest request, System.Action<T> onComplete) where T : UnityEngine.Object
+        {
+            yield return request;
             onComplete?.Invoke(request.asset as T);
         }
 
-        public GameObject LoadPrefab(string path)
+        public GameObject LoadPrefab(string path, ResourceUnloadType unloadType = ResourceUnloadType.UnloadLate)
         {
-            var prefab = Load<GameObject>(path);
+            var prefab = Load<GameObject>(path, unloadType);
             if (prefab == null) return null;
             return Object.Instantiate(prefab);
         }
 
-        public void LoadPrefabAsync(string path, System.Action<GameObject> onComplete)
+        public void LoadPrefabAsync(string path, System.Action<GameObject> onComplete, ResourceUnloadType unloadType = ResourceUnloadType.UnloadLate)
         {
             LoadAsync<GameObject>(path, prefab =>
             {
@@ -54,7 +54,7 @@ namespace YGZFrameWork
                     return;
                 }
                 onComplete?.Invoke(Object.Instantiate(prefab));
-            });
+            }, unloadType);
         }
 
         public void Release(UnityEngine.Object asset)
@@ -64,7 +64,6 @@ namespace YGZFrameWork
 
         public void Preload<T>(string path) where T : UnityEngine.Object
         {
-            // Resources 预加载即直接加载
             _ = Load<T>(path);
         }
     }
